@@ -35,18 +35,27 @@ constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAM4E8E goes up to PE5
 constexpr unsigned int NumTotalPins = 3 * 32;			// SAM4S8C goes up to PC31
 #elif SAME70
 constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
+#elif STM32F4
+constexpr int NumTotalPins = (11*16);
 #else
 # error Unsupported processor
 #endif
 
+#if STM32F4
+inline uint32_t GpioPortNumber(Pin p) { return STM_PORT(p);}
+inline constexpr uint32_t GpioPinNumber(Pin p) { return STM_PIN(p); }
+inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)STM_GPIO_PIN(p); }
+#else
 inline uint32_t GpioPortNumber(Pin p) { return p >> 5; }
 inline constexpr uint32_t GpioPinNumber(Pin p) { return p & 0x1F; }
 inline constexpr uint32_t GpioMask(Pin p) { return (uint32_t)1 << GpioPinNumber(p); }
+#endif
 
 #if SAME70 || SAM4E || SAM4S
 inline Pio *GpioPort(Pin p) { return (Pio*)((uint32_t)PIOA + GpioPortNumber(p) * 0x200); }
 #endif
 
+#if !STM32F4
 /**
  * @brief Return the global pin number for a Port A pin
  *
@@ -125,7 +134,7 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept;
  * @param p The pin number
  */
 void ClearPinFunction(Pin p) noexcept;
-
+#endif
 // Enable or disable the pullup[ resistor
 void SetPullup(Pin p, bool on) noexcept;
 
@@ -219,7 +228,7 @@ private:
 	irqflags_t flags;
 };
 
-#if SAME5x || SAM4E || SAM4S || SAME70		// SAMC21 doesn't support these
+#if SAME5x || SAM4E || SAM4S || SAME70 || STM32F4		// SAMC21 doesn't support these
 
 // Functions to change the base priority, to shut out interrupts up to a priority level
 
@@ -329,6 +338,37 @@ static inline uint32_t random(uint32_t howsmall, uint32_t howbig) noexcept
 	return random(howbig - howsmall) + howsmall;
 }
 
+#if STM32F4
+// Set a pin high with no error checking
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("O3")]] static inline void fastDigitalWriteHigh(const Pin pin) noexcept
+#else
+static inline void fastDigitalWriteHigh(const Pin pin) noexcept
+#endif
+{
+	WRITE_REG(GPIOPort[STM_PORT(pin)]->BSRR, STM_GPIO_PIN(pin));
+}
+
+// Set a pin low with no error checking
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("O3")]] static inline void fastDigitalWriteLow(const Pin pin) noexcept
+#else
+static inline void fastDigitalWriteLow(const Pin pin) noexcept
+#endif
+{
+	WRITE_REG(GPIOPort[STM_PORT(pin)]->BSRR, STM_GPIO_PIN(pin) << 16);
+}
+
+// Read a pin with no error checking
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("O3")]] static inline int fastDigitalRead(const Pin pin) noexcept
+#else
+static inline bool fastDigitalRead(const Pin pin) noexcept
+#endif
+{
+	return READ_BIT(GPIOPort[STM_PORT(pin)]->IDR, STM_GPIO_PIN(pin));
+}
+#else
 /**
  * @brief Set a pin high with no error checking
  *
@@ -376,6 +416,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
 # error Unsupported processor
 #endif
 }
+#endif
 
 /**
  * @brief Reset the microcontroller
@@ -383,6 +424,7 @@ inline bool fastDigitalRead(uint32_t pin) noexcept
  */
 [[noreturn]] void Reset() noexcept;
 
+#if !STM32F4
 /**
  * @brief TC output identifiers used in pin tables
  * These encode the TC number, the output number from that TC, and the peripheral number
@@ -607,7 +649,12 @@ static inline constexpr GpioPinFunction GetPeriNumber(PwmOutput pwm) noexcept
 }
 
 #endif
-
+#endif
+#if STM32F4
+typedef uint32_t AdcInput;
+typedef AdcInput AnalogChannelNumber;
+constexpr AnalogChannelNumber NO_ADC = (AnalogChannelNumber)0xffffffff;
+#else
 /**
  * @brief ADC input identifiers, encoding both the ADC device and the ADC input number within the device.
  * On the SAMC21 we only support the first ADC and the SDADC. On the SAME5x, SAM4S and SAmE70 we support both ADCs.
@@ -643,7 +690,9 @@ enum class AdcInput : uint8_t
 
 typedef AdcInput AnalogChannelNumber;						///< for backwards compatibility
 constexpr AnalogChannelNumber NO_ADC = AdcInput::none;		///< for backwards compatibility
+#endif
 
+#if !STM32F4
 /**
  * @brief Get the ADC number that an ADC input is on
  *
@@ -659,7 +708,7 @@ static inline constexpr unsigned int GetDeviceNumber(AdcInput ain) noexcept { re
  * @return The input number within the ADC
  */
 static inline constexpr unsigned int GetInputNumber(AdcInput ain) noexcept { return (uint8_t)ain & 0x0F; }
-
+#endif
 /**
  * @brief Return the AdcInput that is attached to a pin
  *
@@ -680,6 +729,7 @@ AnalogChannelNumber PinToSdAdcChannel(Pin p) noexcept;
 
 #endif
 
+#if !STM32F4
 /**
  * @brief SERCOM identifier. This encodes a SERCOM number and the peripheral that it is on.
  *
@@ -755,7 +805,7 @@ struct PinDescriptionBase
 
 #endif
 };
-
+#endif
 class MicrosecondsTimer
 {
 public:
@@ -778,6 +828,7 @@ extern void AppInit() noexcept;
  */
 [[noreturn]] extern void AppMain() noexcept;
 
+#if !STM32F4
 /**
  * @brief Get the frequency in MHz of the crystal connected to the MCU. Should be 12, 16 or 25.
  * @return Frequency in MHz
@@ -810,5 +861,5 @@ extern const PinDescriptionBase *AppGetPinDescription(Pin p) noexcept;
 extern uint32_t AppGetSdhcClockSpeed() noexcept;
 
 #endif
-
+#endif
 #endif /* SRC_HARDWARE_SAME5X_COREIO_H_ */

@@ -19,6 +19,8 @@ namespace AnalogIn
 	constexpr unsigned int AdcBits = 16;
 #elif SAME5x
 	constexpr unsigned int AdcBits = 16;
+#elif STM32F4
+	constexpr unsigned int AdcBits = 14;
 #endif
 
 #ifdef RTOS
@@ -89,6 +91,8 @@ namespace LegacyAnalogIn
 	// Return the number of bits provided by a call to AnalogInReadChannel
 #if SAME70
 	static constexpr unsigned int AdcBits = 14;
+#elif STM32F4
+	static constexpr unsigned int AdcBits = 14;
 #else
 	static constexpr unsigned int AdcBits = 12;
 #endif
@@ -121,6 +125,11 @@ namespace LegacyAnalogIn
 	// Get the temperature measurement channel
 	extern AnalogChannelNumber GetTemperatureAdcChannel() noexcept;
 
+#if STM32F4
+	// Get the VRef measurement channel
+	extern AnalogChannelNumber GetVREFAdcChannel() noexcept;
+#endif
+
 }
 
 #ifdef RTOS
@@ -128,7 +137,7 @@ namespace LegacyAnalogIn
 // This function is for backwards compatibility with CoreNG
 inline uint16_t AnalogInReadChannel(AdcInput adcin)
 {
-#if SAME70 || SAM4E || SAM4S
+#if SAME70 || SAM4E || SAM4S || STM32F4
 	return LegacyAnalogIn::AnalogInReadChannel(adcin);
 #else
 	return AnalogIn::ReadChannel(adcin);
@@ -138,7 +147,7 @@ inline uint16_t AnalogInReadChannel(AdcInput adcin)
 // This function is for backwards compatibility with CoreNG
 inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 {
-#if SAME70 || SAM4E || SAM4S
+#if SAME70 || SAM4E || SAM4S || STM32F4
 	LegacyAnalogIn::AnalogInEnableChannel(adcin, enable);
 #else
 	if (enable)

@@ -63,6 +63,16 @@
 # include <parts.h>
 # include <same70q20b.h>
 # define SAME5x				0
+#elif defined(__STM32F4__)
+# include <stm32f4.h>
+# include <dwt.h>
+# define STM32F4			1
+# define SAMC21				0
+# define SAM3XA				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				0
+# define SAME70				0
 #else
 # error unsupported processor
 #endif
@@ -74,14 +84,22 @@
 
 typedef uint8_t DmaChannel;			///< A type that represents a DMA channel number
 typedef uint8_t DmaPriority;		///< A type that represents a DMA priority
+#if STM32F4
+typedef PinName Pin;
+#else
 typedef uint8_t Pin;				///< A type that represents an I/O pin on the microcontroller
+#endif
 typedef uint16_t PwmFrequency;		///< A type that represents a PWM frequency. 0 sometimes means "default".
 typedef uint32_t NvicPriority;		///< A type that represents an interrupt priority
 typedef uint8_t ExintNumber;		///< A type that represents an EXINT number
 typedef uint8_t EventNumber;		///< A type that represents an event number
 
+#if STM32F4
+static const Pin NoPin = NC;		///< A number that represents no I/O pin
+#else
 static const Pin NoPin = 0xFF;		///< A number that represents no I/O pin
 static const Pin Nx = 0xFF;			///< A number that represents no I/O EXINT number
+#endif
 
 // Standard GCLK numbers and frequencies
 #if SAME5x
@@ -114,6 +132,9 @@ static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock 
 
 static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock frequency after initialisation
 
+#elif STM32F4
+
+#define SystemCoreClockFreq SystemCoreClock
 #endif
 
 /// Pin mode enumeration
@@ -200,6 +221,32 @@ void digitalWrite(Pin pin, bool high) noexcept;
  */
 uint32_t random32(void) noexcept;		// needed by lwip
 
+#if STM32F4
+// Delay in cycles
+static inline uint32_t DelayCycles(const uint32_t start, const uint32_t cycles) noexcept __attribute__((always_inline, unused));
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("03")]]
+#endif
+static inline uint32_t DelayCycles(const uint32_t start, const uint32_t cycles) noexcept
+{
+	while ((DWT->CYCCNT) - start < cycles) ; 
+	return (DWT->CYCCNT); 
+}
+
+static inline uint32_t GetCurrentCycles() noexcept
+{
+	return (DWT->CYCCNT);
+}
+static inline uint32_t GetElapsedCyclesBetween(uint32_t startCycles, uint32_t endCycles) noexcept
+{
+	return endCycles - startCycles;
+}
+
+static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+{
+  return (ns * (uint64_t)SystemCoreClock)/1000000000u;
+}
+#else
 /**
  * @brief Delay for a specified number of CPU clock cycles from the starting time
  *
@@ -230,6 +277,7 @@ static inline uint32_t GetElapsedCyclesBetween(uint32_t startCycles, uint32_t en
 {
 	return ((endCycles < startCycles) ? startCycles : startCycles + (SysTick->LOAD & 0x00FFFFFF) + 1) - endCycles;
 }
+#endif
 
 /**
  * @brief Get the elapsed time in clock cycles since a start time, assuming it is below 1ms

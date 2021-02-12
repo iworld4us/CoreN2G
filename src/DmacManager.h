@@ -9,7 +9,7 @@
 #define SRC_HARDWARE_DMACMANAGER_H_
 
 #include <CoreIO.h>
-
+#if !STM32F4
 #if SAME5x
 constexpr unsigned int NumDmaChannelsSupported = 15;	// max is 32
 #elif SAMC21
@@ -282,5 +282,5 @@ namespace DmacManager
 	uint8_t GetAndClearChannelStatus(DmaChannel channel) noexcept;
 	uint16_t GetBytesTransferred(DmaChannel channel) noexcept;
 }
-
+#endif
 #endif /* SRC_HARDWARE_DMACMANAGER_H_ */

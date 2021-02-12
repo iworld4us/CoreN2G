@@ -28,9 +28,71 @@
 # include <pmc/pmc.h>
 # include <pio/pio.h>
 # include <rstc/rstc.h>
+#elif STM32F4
+#include <CoreImp.h>
+//#include <stm32f4xx_hal_rcc.h>
+//#include <stm32f4xx_hal_wwdg.h>
+//#include <pinmap.h>
+#include <HybridPWM.h>
+static WWDG_HandleTypeDef wdHandle;
 #endif
 
+#if STM32F4
+void SetPinMode(Pin pin, enum PinMode ulMode, uint32_t debounceCutoff = 0) noexcept
+{
+    if(pin == NoPin) return;
+    switch (ulMode)
+    {
+        case INPUT:
+            pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_NOPULL, 0));
+            break;
 
+        case INPUT_PULLUP:
+            pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLUP, 0));
+            break;
+            
+        case INPUT_PULLDOWN:
+            pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLDOWN, 0));
+            break;
+            
+        case OUTPUT_LOW:
+            pin_function(pin, STM_PIN_DATA(STM_MODE_OUTPUT_PP, GPIO_NOPULL, 0));
+            fastDigitalWriteLow(pin);
+            break;
+            
+        case OUTPUT_HIGH:
+            pin_function(pin, STM_PIN_DATA(STM_MODE_OUTPUT_PP, GPIO_NOPULL, 0));
+            fastDigitalWriteHigh(pin);
+            break;
+            
+        case OUTPUT_PWM_LOW:
+            HybridPWMPin::allocate(pin, 0.0f);
+            break;
+            
+        case OUTPUT_PWM_HIGH:
+            HybridPWMPin::allocate(pin, 1.0f);
+            break;
+
+        case AIN:
+            //analog in
+            pin_function(pin, STM_PIN_DATA(STM_MODE_ANALOG, GPIO_NOPULL, 0));
+            break;
+
+        default:
+            break;
+    }
+}
+
+void SetPullup(Pin pin, bool en) noexcept
+{
+  if (pin == NC) return;
+  if (en)
+    pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLUP, 0));
+  else
+    pin_function(pin, STM_PIN_DATA(STM_MODE_INPUT, GPIO_NOPULL, 0));
+}
+
+#else
 // Delay for a specified number of CPU clock cycles from the starting time. Return the time at which we actually stopped waiting.
 extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 {
@@ -285,6 +347,7 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 		}
 	}
 }
+#endif
 
 // C-callable version of SetPinMode
 extern "C" void pinMode(Pin pin, enum PinMode mode) noexcept
@@ -442,6 +505,7 @@ void CoreInit() noexcept
 #if SAME5x || SAME70
 	RandomInit();
 #endif
+
 }
 
 void WatchdogInit() noexcept
@@ -458,6 +522,17 @@ void WatchdogInit() noexcept
 	// This assumes the slow clock is running at 32.768 kHz, watchdog frequency is therefore 32768 / 128 = 256 Hz
 	constexpr uint16_t watchdogTicks = 256;						// about 1 second
 	WDT->WDT_MR = WDT_MR_WDRSTEN | WDT_MR_WDV(watchdogTicks) | WDT_MR_WDD(watchdogTicks);
+#elif STM32F4
+    wdHandle.Instance = WWDG;
+    wdHandle.Init.Prescaler = WWDG_PRESCALER_8;
+    wdHandle.Init.Window = 0x7f;
+    wdHandle.Init.Counter = 0x7f;
+    wdHandle.Init.EWIMode = WWDG_EWI_ENABLE;
+    __HAL_RCC_WWDG_CLK_ENABLE();
+    HAL_WWDG_Init(&wdHandle);
+    __HAL_WWDG_ENABLE_IT(&wdHandle, WWDG_IT_EWI);
+    __HAL_WWDG_ENABLE(&wdHandle);
+    NVIC_EnableIRQ(WWDG_IRQn);
 #endif
 }
 
@@ -471,6 +546,8 @@ void WatchdogReset() noexcept
 	}
 #elif SAME70 || SAM4E || SAM4S
 	WDT->WDT_CR = WDT_CR_KEY_PASSWD | WDT_CR_WDRSTT;
+#elif STM32F4
+    HAL_WWDG_Refresh(&wdHandle);
 #endif
 }
 
@@ -488,12 +565,15 @@ void Reset() noexcept
 {
 #if SAME70 || SAM4E || SAM4S
 	rstc_start_software_reset(RSTC);
+#elif STM32F4
+	NVIC_SystemReset();
 #else
 	SCB->AIRCR = (0x5FA << 16) | (1u << 2);						// reset the processor
 #endif
 	for (;;) { }
 }
 
+#if !STM32F4
 #if SAME5x || SAMC21
 
 // Enable a GCLK. This function doesn't allow access to some GCLK features, e.g. the DIVSEL or OOV or RUNSTDBY bits.
@@ -606,14 +686,23 @@ void EnableTccClock(unsigned int tccNumber, unsigned int gclkNum) noexcept
 }
 
 #endif
+#endif
 
+#if STM32F4
+// Get the analog input channel that a pin uses
+AnalogChannelNumber PinToAdcChannel(Pin p) noexcept
+{
+	return LegacyAnalogIn::PinToAdcChannel(p);
+}
+
+#else
 // Get the analog input channel that a pin uses
 AnalogChannelNumber PinToAdcChannel(Pin p) noexcept
 {
 	const PinDescriptionBase * const pinDesc = AppGetPinDescription(p);
 	return (pinDesc == nullptr) ? AdcInput::none : pinDesc->adc;
 }
-
+#endif
 #if SAMC21
 
 // Get the SDADC channel that a pin uses
