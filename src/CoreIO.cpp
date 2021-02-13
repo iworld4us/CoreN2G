@@ -405,6 +405,9 @@ void delay(uint32_t ms) noexcept
 
 void CoreSysTick() noexcept
 {
+#if STM32F4
+	HAL_IncTick();
+#endif
 	g_ms_ticks++;
 }
 

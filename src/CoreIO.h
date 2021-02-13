@@ -366,7 +366,7 @@ static inline void fastDigitalWriteLow(const Pin pin) noexcept
 static inline bool fastDigitalRead(const Pin pin) noexcept
 #endif
 {
-	return READ_BIT(GPIOPort[STM_PORT(pin)]->IDR, STM_GPIO_PIN(pin));
+	return READ_BIT(GPIOPort[STM_PORT(pin)]->IDR, STM_GPIO_PIN(pin)) != 0;
 }
 #else
 /**
