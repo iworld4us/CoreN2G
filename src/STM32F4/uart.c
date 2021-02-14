@@ -33,15 +33,15 @@
   *
   ******************************************************************************
   */
-#include "core_debug.h"
-#include "uart.h"
 #include "CoreImp.h"
+#include "uart.h"
 #include "PinAF_STM32F1.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 #if defined(HAL_UART_MODULE_ENABLED)
+extern void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 /* If DEBUG_UART is not defined assume this is the one linked to PIN_SERIAL_TX */
 #if !defined(DEBUG_UART)
@@ -132,7 +132,7 @@ void uart_init(serial_t *obj, uint32_t baudrate, uint32_t databits, uint32_t par
 
   /* Pins Rx/Tx must not be NP */
   if (uart_rx == NP || uart_tx == NP) {
-    core_debug("ERROR: at least one UART pin has no peripheral\n");
+    debugPrintf("ERROR: at least one UART pin has no peripheral\n");
     return;
   }
 
@@ -143,7 +143,7 @@ void uart_init(serial_t *obj, uint32_t baudrate, uint32_t databits, uint32_t par
   obj->uart = pinmap_merge_peripheral(uart_tx, uart_rx);
 
   if (obj->uart == NP) {
-    core_debug("ERROR: U(S)ART pins mismatch\n");
+    debugPrintf("ERROR: U(S)ART pins mismatch\n");
     return;
   }
 

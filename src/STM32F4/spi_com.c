@@ -35,7 +35,6 @@
   *
   ******************************************************************************
   */
-#include "core_debug.h"
 #include "stm32_def.h"
 #include "spi_com.h"
 #include "PinAF_STM32F1.h"
@@ -45,6 +44,7 @@
 extern "C" {
 #endif
 #if defined(HAL_SPI_MODULE_ENABLED)
+extern void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 /* Private Functions */
 /**
@@ -95,7 +95,7 @@ uint32_t spi_getClkFreqInst(SPI_TypeDef *spi_inst)
         break;
 #endif
       default:
-        core_debug("CLK: SPI instance not set");
+        debugPrintf("CLK: SPI instance not set");
         break;
     }
   }
@@ -151,7 +151,7 @@ void spi_init(spi_t *obj, uint32_t spimode, uint32_t speed, spi_mode_e mode, uin
 
   /* Pins MOSI/MISO/SCLK must not be NP. ssel can be NP. */
   if (spi_mosi == NP || spi_miso == NP || spi_sclk == NP) {
-    core_debug("ERROR: at least one SPI pin has no peripheral\n");
+    debugPrintf("ERROR: at least one SPI pin has no peripheral\n");
     return;
   }
 
@@ -162,7 +162,7 @@ void spi_init(spi_t *obj, uint32_t spimode, uint32_t speed, spi_mode_e mode, uin
 
   // Are all pins connected to the same SPI instance?
   if (obj->spi == NP) {
-    core_debug("ERROR: SPI pins mismatch\n");
+    debugPrintf("ERROR: SPI pins mismatch\n");
     return;
   }
 
