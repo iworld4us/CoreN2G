@@ -59,7 +59,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_TICK_HOOK						1
 #define configCPU_CLOCK_HZ						( SystemCoreClock )
 #define configTICK_RATE_HZ						( 1000 )
-#define configMAX_PRIORITIES					( 6 )
+#define configMAX_PRIORITIES					( 5 )
 #define configMINIMAL_STACK_SIZE				( ( unsigned short ) 120 )
 
 #define configAPPLICATION_ALLOCATED_HEAP        ( 0 )
@@ -76,7 +76,8 @@ extern uint32_t SystemCoreClock;
 #define configUSE_APPLICATION_TASK_TAG			0
 #define configUSE_COUNTING_SEMAPHORES			1
 #define configUSE_NEWLIB_REENTRANT 				0	// We'd like to use 1 but that makes the tasks too big because strint _reent is so large
-
+#define configUSE_TASK_NOTIFICATIONS			1
+#define configINCLUDE_FREERTOS_TASK_C_ADDITIONS_H     1
 /* The full demo always has tasks to run so the tick will never be turned off.
 The blinky demo will use the default tickless idle implementation to turn the
 tick off. */
@@ -104,14 +105,13 @@ FreeRTOS/Source/tasks.c for limitations. */
 #define configTIMER_TASK_PRIORITY		( 2 )
 #define configTIMER_QUEUE_LENGTH		5
 // TODO::: vTaskList says using 32words.... configTIMER_TASK_STACK_DEPTH currently set to 120words
-#define configTIMER_TASK_STACK_DEPTH	( /*50*/ 120 )
+#define configTIMER_TASK_STACK_DEPTH	( configMINIMAL_STACK_SIZE )
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 #define INCLUDE_vTaskPrioritySet		1
 #define INCLUDE_uxTaskPriorityGet		1
 #define INCLUDE_vTaskDelete				1
-#define INCLUDE_vTaskCleanUpResources	0
 #define INCLUDE_vTaskSuspend			1
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay				1
@@ -174,7 +174,6 @@ macros are defined to gather some UDP stack statistics that can then be viewed
 through the CLI interface. */
 #define configINCLUDE_DEMO_DEBUG_STATS 0
 
-#define configINCLUDE_FREERTOS_TASK_C_ADDITIONS_H     1
 
 
 #endif /* FREERTOS_CONFIG_H */
