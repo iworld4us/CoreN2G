@@ -30,9 +30,6 @@
 # include <rstc/rstc.h>
 #elif STM32F4
 #include <CoreImp.h>
-//#include <stm32f4xx_hal_rcc.h>
-//#include <stm32f4xx_hal_wwdg.h>
-//#include <pinmap.h>
 #include <HybridPWM.h>
 static WWDG_HandleTypeDef wdHandle;
 #endif
