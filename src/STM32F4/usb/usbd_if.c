@@ -9,6 +9,7 @@
 
 #include "usbd_if.h"
 #include "usbd_cdc_if.h"
+#include "PinNamesVar.h"
 
 /**
   * @brief  Force to re-enumerate USB

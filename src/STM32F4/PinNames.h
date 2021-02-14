@@ -10,7 +10,7 @@ extern "C" {
 
 typedef enum {
   // Not connected
-  NC = (int)0xFFFFFFFF,
+  NC = (int)0xFF,
 
   // Pin name definition
   PA_0  = (PortA << 4) + 0x00,
@@ -208,25 +208,7 @@ typedef enum {
   PK_14 = (PortK << 4) + 0x0E,
   PK_15 = (PortK << 4) + 0x0F,
 #endif
-  // Specific pin name
-  PADC_BASE = 0x100,
-#if defined(ADC_CHANNEL_TEMPSENSOR) || defined(ADC_CHANNEL_TEMPSENSOR_ADC1)
-  PADC_TEMP,
-#endif
-#if defined(ADC5) && defined(ADC_CHANNEL_TEMPSENSOR_ADC5)
-  PADC_TEMP_ADC5,
-#endif
-#ifdef ADC_CHANNEL_VREFINT
-  PADC_VREF,
-#endif
-#ifdef ADC_CHANNEL_VBAT
-  PADC_VBAT,
-#endif
-  // Specific pin name define in the variant
-#if __has_include("PinNamesVar.h")
-#include "PinNamesVar.h"
-#endif
-  P_END = NC
+  P_END
 } PinName;
 
 #ifdef __cplusplus

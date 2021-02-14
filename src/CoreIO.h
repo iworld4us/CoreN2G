@@ -36,7 +36,7 @@ constexpr unsigned int NumTotalPins = 3 * 32;			// SAM4S8C goes up to PC31
 #elif SAME70
 constexpr unsigned int NumTotalPins = (4 * 32) + 6;		// SAME70 goes up to PE5
 #elif STM32F4
-constexpr int NumTotalPins = (11*16);
+constexpr int NumTotalPins = P_END;
 #else
 # error Unsupported processor
 #endif
