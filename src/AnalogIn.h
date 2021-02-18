@@ -9,6 +9,14 @@
 #define SRC_HARDWARE_ANALOGIN_H_
 
 #include <CoreIO.h>
+#if STM32F4
+#include "stm32f4xx_ll_adc.h"
+// ADC VREF and MCU Temperature calibration values
+#define TEMPSENSOR_CAL1_DEF 931
+#define TEMPSENSOR_CAL2_DEF 1197
+#define VREFINT_CAL_DEF 1500
+#define GET_ADC_CAL(CAL, DEF) (*CAL == 0xffff ? DEF : *CAL)
+#endif
 
 typedef void (*AnalogInCallbackFunction)(CallbackParameter p, uint16_t reading) noexcept;
 
@@ -137,7 +145,7 @@ namespace LegacyAnalogIn
 // This function is for backwards compatibility with CoreNG
 inline uint16_t AnalogInReadChannel(AdcInput adcin)
 {
-#if SAME70 || SAM4E || SAM4S || STM32F4
+#if SAME70 || SAM4E || SAM4S || STM32F4 || LPC17xx
 	return LegacyAnalogIn::AnalogInReadChannel(adcin);
 #else
 	return AnalogIn::ReadChannel(adcin);
@@ -147,7 +155,7 @@ inline uint16_t AnalogInReadChannel(AdcInput adcin)
 // This function is for backwards compatibility with CoreNG
 inline void AnalogInEnableChannel(AdcInput adcin, bool enable)
 {
-#if SAME70 || SAM4E || SAM4S || STM32F4
+#if SAME70 || SAM4E || SAM4S || STM32F4 || LPC17xx
 	LegacyAnalogIn::AnalogInEnableChannel(adcin, enable);
 #else
 	if (enable)

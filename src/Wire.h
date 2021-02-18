@@ -18,7 +18,9 @@
 #define TwoWire_h
 
 #include "CoreIO.h"
-
+#if LPC17xx
+#include "Wire/Wire.h"
+#else
 #if SAME70
 // TWI disabled for now
 #else
@@ -70,6 +72,6 @@ private:
 };
 
 #endif
-
+#endif
 #endif
 

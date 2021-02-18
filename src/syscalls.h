@@ -12,6 +12,10 @@
 #include <cerrno>
 #include <new>
 
+#if LPC17xx
+#include <portable.h>
+#endif
+
 #undef errno
 
 int errno;
@@ -55,6 +59,14 @@ extern "C" void * _sbrk(ptrdiff_t incr) noexcept
  */
 void *CoreAllocPermanent(size_t sz, std::align_val_t align) noexcept
 {
+#if LPC17xx
+	void *ret = pvPortMallocPermanent( sz );
+	if (ret == nullptr)
+	{
+		OutOfMemoryHandler();
+	}
+	return ret;
+#else
 	char * const newHeapLimit = reinterpret_cast<char *>(reinterpret_cast<uint32_t>(heapLimit - sz) & ~((uint32_t)align - 1));
 	if (newHeapLimit < heapTop)
 	{
@@ -62,6 +74,7 @@ void *CoreAllocPermanent(size_t sz, std::align_val_t align) noexcept
 	}
 	heapLimit = newHeapLimit;
 	return newHeapLimit;
+#endif
 }
 
 /**

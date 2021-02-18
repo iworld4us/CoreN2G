@@ -67,6 +67,17 @@
 # include <stm32f4.h>
 # include <dwt.h>
 # define STM32F4			1
+# define LPC17xx			0
+# define SAMC21				0
+# define SAM3XA				0
+# define SAM4E				0
+# define SAM4S				0
+# define SAME5x				0
+# define SAME70				0
+#elif defined(__LPC17xx__)
+# include <lpc17xx.h>
+# define LPC17xx			1
+# define STM32F4			0
 # define SAMC21				0
 # define SAM3XA				0
 # define SAM4E				0
@@ -86,6 +97,8 @@ typedef uint8_t DmaChannel;			///< A type that represents a DMA channel number
 typedef uint8_t DmaPriority;		///< A type that represents a DMA priority
 #if STM32F4
 typedef PinName Pin;
+#elif LPC17xx
+typedef gpioPins_et Pin;
 #else
 typedef uint8_t Pin;				///< A type that represents an I/O pin on the microcontroller
 #endif
@@ -96,6 +109,8 @@ typedef uint8_t EventNumber;		///< A type that represents an event number
 
 #if STM32F4
 static const Pin NoPin = NC;		///< A number that represents no I/O pin
+#elif LPC17xx
+static const Pin NoPin = P_NC; 		//which =0xff
 #else
 static const Pin NoPin = 0xFF;		///< A number that represents no I/O pin
 static const Pin Nx = 0xFF;			///< A number that represents no I/O EXINT number
@@ -132,7 +147,7 @@ static const uint32_t SystemCoreClockFreq = 120000000;	///< The processor clock 
 
 static const uint32_t SystemCoreClockFreq = 300000000;	///< The processor clock frequency after initialisation
 
-#elif STM32F4
+#elif STM32F4 || LPC17xx
 
 #define SystemCoreClockFreq SystemCoreClock
 #endif
@@ -153,6 +168,10 @@ enum PinMode
 	OUTPUT_LOW_OPEN_DRAIN,			///< pin is used in SX1509B expansion driver to put the pin in open drain output mode
 	OUTPUT_HIGH_OPEN_DRAIN,			///< pin is  used in SX1509B expansion driver to put the pin in open drain output mode
 	OUTPUT_PWM_OPEN_DRAIN,			///< pin is  used in SX1509B expansion driver to put the pin in PWM output mode
+#endif
+#if LPC17xx
+     OUTPUT_SERVO_LOW,
+     OUTPUT_SERVO_HIGH
 #endif
 };
 
@@ -246,6 +265,66 @@ static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
 {
   return (ns * (uint64_t)SystemCoreClock)/1000000000u;
 }
+
+#elif LPC17xx
+/**
+ * Delay for a number of cpu cycles
+ */
+
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("03")]]
+#endif
+static inline void __delay_4cycles(uint32_t cy) noexcept { // +1 cycle
+__asm__ __volatile__(
+    "  .syntax unified\n\t" // is to prevent CM0,CM1 non-unified syntax
+    "1:\n\t"
+    "  subs %[cnt],#1\n\t" // 1
+    "  mov r0, r0\n\t"            // 1
+    "  bne 1b\n\t"         // 1 + (1? reload)
+    : [cnt]"+r"(cy)   // output: +r means input+output
+    :                 // input:
+    : "cc"            // clobbers:
+);
+}
+
+// Delay in cycles
+#ifdef __cplusplus
+[[gnu::always_inline, gnu::optimize("03")]]
+#endif
+
+static inline uint32_t DelayCycles(const uint32_t start, const uint32_t cycles) noexcept 
+{
+    if (cycles >> 2) __delay_4cycles(cycles >> 2);
+    return 0;
+}
+
+/**
+ * @brief Get the current cycle counter, for subsequent use as the start time in a call to DelayCycles
+ *
+ * @return The cycle counter
+ */
+static inline uint32_t GetCurrentCycles() noexcept
+{
+	return SysTick->VAL & 0x00FFFFFF;
+}
+
+/**
+ * @brief Get the elapsed time in clock cycles between a start time and an end time, assuming it is below 1ms
+ * @param startTime The start time, obtained by a call to GetCurrentCycles
+ * @param endTime The end time, obtained by a call to GetCurrentCycles
+ *
+ * @return The elapsed time
+ */
+static inline uint32_t GetElapsedCyclesBetween(uint32_t startCycles, uint32_t endCycles) noexcept
+{
+	return ((endCycles < startCycles) ? startCycles : startCycles + (SysTick->LOAD & 0x00FFFFFF) + 1) - endCycles;
+}
+
+static inline uint32_t NanosecondsToCycles(uint32_t ns) noexcept
+{
+  return (ns * (uint64_t)SystemCoreClock)/1000000000u;
+}
+
 #else
 /**
  * @brief Delay for a specified number of CPU clock cycles from the starting time
