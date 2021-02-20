@@ -27,9 +27,9 @@ Andy - 6/8/2020
 */
 
 // Create SPI devices the actual configuration is set later
-HardwareSPI HardwareSPI::SSP1;
-HardwareSPI HardwareSPI::SSP2;
-HardwareSPI HardwareSPI::SSP3;
+HardwareSPI HardwareSPI::SSP1(SPI1);
+HardwareSPI HardwareSPI::SSP2(SPI2);
+HardwareSPI HardwareSPI::SSP3(SPI3);
 
 //#define SSPI_DEBUG
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
@@ -182,7 +182,7 @@ void HardwareSPI::configureDevice(uint32_t deviceMode, uint32_t bits, uint32_t c
             spi_deinit(&spi);
         }
         spi.pin_ssel = cs;
-        spi_init(&spi, deviceMode, bitRate, (spi_mode_e)clockMode, 1);
+        spi_init(&spi, dev, deviceMode, bitRate, (spi_mode_e)clockMode, 1);
         initComplete = true;
         curBitRate = bitRate;
         curBits = bits;
@@ -197,7 +197,7 @@ void HardwareSPI::configureDevice(uint32_t bits, uint32_t clockMode, uint32_t bi
 }
 
 
-HardwareSPI::HardwareSPI() noexcept :initComplete(false)
+HardwareSPI::HardwareSPI(SPI_TypeDef *spi) noexcept : dev(spi), initComplete(false)
 {
     curBitRate = 0xffffffff;
     curClockMode = 0xffffffff;

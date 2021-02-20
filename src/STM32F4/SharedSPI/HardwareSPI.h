@@ -19,7 +19,7 @@ typedef void (*SPICallbackFunction)(HardwareSPI *spiDevice) noexcept;
 class HardwareSPI: public SPI
 {
 public:
-    HardwareSPI() noexcept;
+    HardwareSPI(SPI_TypeDef *spi) noexcept;
     spi_status_t transceivePacket(const uint8_t *tx_data, uint8_t *rx_data, size_t len) noexcept;
     bool waitForTxEmpty() noexcept;
     void configureDevice(uint32_t bits, uint32_t clockMode, uint32_t bitRate) noexcept; // Master mode
@@ -37,6 +37,7 @@ public:
 private:
     bool usingDma;
     spi_t spi;
+    SPI_TypeDef *dev;
     DMA_HandleTypeDef dmaRx;
     DMA_HandleTypeDef dmaTx;
     Pin csPin;

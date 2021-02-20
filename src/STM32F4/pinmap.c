@@ -146,6 +146,22 @@ void pinmap_pinout(PinName pin, const PinMap *map)
   Error_Handler();
 }
 
+bool pinmap_pinout2(void *peripheral, PinName pin, const PinMap *map)
+{
+  if (pin == NC) {
+    return true;
+  }
+
+  while (map->pin != NC) {
+    if (map->pin == pin && map->peripheral == peripheral) {
+      pin_function(pin, map->function);
+      return true;
+    }
+    map++;
+  }
+  return false;
+}
+
 void *pinmap_find_peripheral(PinName pin, const PinMap *map)
 {
   while (map->pin != NC) {

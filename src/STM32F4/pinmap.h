@@ -52,6 +52,7 @@ static inline PinName pin_pinName(const PinMap *map)
 }
 
 void  pinmap_pinout(PinName pin, const PinMap *map);
+bool  pinmap_pinout2(void *peripheral, PinName pin, const PinMap *map);
 void *pinmap_find_peripheral(PinName pin, const PinMap *map);
 void *pinmap_peripheral(PinName pin, const PinMap *map);
 PinName pinmap_find_pin(void *peripheral, const PinMap *map);

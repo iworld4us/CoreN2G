@@ -104,26 +104,6 @@ uint32_t spi_getClkFreqInst(SPI_TypeDef *spi_inst)
 }
 
 /**
-  * @brief  return clock freq of an SPI instance
-  * @param  obj : pointer to spi_t structure
-  * @retval clock freq of the instance else SystemCoreClock
-  */
-uint32_t spi_getClkFreq(spi_t *obj)
-{
-  SPI_TypeDef *spi_inst = NP;
-  uint32_t spi_freq = SystemCoreClock;
-
-  if (obj != NULL) {
-    spi_inst = pinmap_peripheral(obj->pin_sclk, PinMap_SPI_SCLK);
-
-    if (spi_inst != NP) {
-      spi_freq = spi_getClkFreqInst(spi_inst);
-    }
-  }
-  return spi_freq;
-}
-
-/**
   * @brief  SPI initialization function
   * @param  obj : pointer to spi_t structure
   * @param spimode: master/slave mode
@@ -132,7 +112,7 @@ uint32_t spi_getClkFreq(spi_t *obj)
   * @param  msb : set to 1 in msb first
   * @retval None
   */
-void spi_init(spi_t *obj, uint32_t spimode, uint32_t speed, spi_mode_e mode, uint8_t msb)
+void spi_init(spi_t *obj, SPI_TypeDef *dev, uint32_t spimode, uint32_t speed, spi_mode_e mode, uint8_t msb)
 {
   if (obj == NULL) {
     return;
@@ -140,32 +120,7 @@ void spi_init(spi_t *obj, uint32_t spimode, uint32_t speed, spi_mode_e mode, uin
 
   SPI_HandleTypeDef *handle = &(obj->handle);
   uint32_t spi_freq = 0;
-  // See FIXME below
-  //uint32_t pull = 0;
-
-  // Determine the SPI to use
-  SPI_TypeDef *spi_mosi = pinmap_peripheral(obj->pin_mosi, PinMap_SPI_MOSI);
-  SPI_TypeDef *spi_miso = pinmap_peripheral(obj->pin_miso, PinMap_SPI_MISO);
-  SPI_TypeDef *spi_sclk = pinmap_peripheral(obj->pin_sclk, PinMap_SPI_SCLK);
-  SPI_TypeDef *spi_ssel = pinmap_peripheral(obj->pin_ssel, PinMap_SPI_SSEL);
-
-  /* Pins MOSI/MISO/SCLK must not be NP. ssel can be NP. */
-  if (spi_mosi == NP || spi_miso == NP || spi_sclk == NP) {
-    debugPrintf("ERROR: at least one SPI pin has no peripheral\n");
-    return;
-  }
-
-  SPI_TypeDef *spi_data = pinmap_merge_peripheral(spi_mosi, spi_miso);
-  SPI_TypeDef *spi_cntl = pinmap_merge_peripheral(spi_sclk, spi_ssel);
-
-  obj->spi = pinmap_merge_peripheral(spi_data, spi_cntl);
-
-  // Are all pins connected to the same SPI instance?
-  if (obj->spi == NP) {
-    debugPrintf("ERROR: SPI pins mismatch\n");
-    return;
-  }
-
+  obj->spi = dev;
   // Configure the SPI pins
   if (obj->pin_ssel != NC) {
     handle->Init.NSS = (spimode == SPI_MODE_SLAVE ? SPI_NSS_HARD_INPUT : SPI_NSS_HARD_OUTPUT);
@@ -230,17 +185,14 @@ void spi_init(spi_t *obj, uint32_t spimode, uint32_t speed, spi_mode_e mode, uin
 #endif
 
   /* Configure SPI GPIO pins */
-  pinmap_pinout(obj->pin_mosi, PinMap_SPI_MOSI);
-  pinmap_pinout(obj->pin_miso, PinMap_SPI_MISO);
-  pinmap_pinout(obj->pin_sclk, PinMap_SPI_SCLK);
-  /*
-   * According the STM32 Datasheet for SPI peripheral we need to PULLDOWN
-   * or PULLUP the SCK pin according the polarity used.
-   */
-  // FIXME setting this screws up things when in slave mode, not setting it seems fine for both modes
-  //pull = (handle->Init.CLKPolarity == SPI_POLARITY_LOW) ? GPIO_PULLDOWN : GPIO_PULLUP;
-  //pin_PullConfig(get_GPIO_Port(STM_PORT(obj->pin_sclk)), STM_LL_GPIO_PIN(obj->pin_sclk), pull);
-  pinmap_pinout(obj->pin_ssel, PinMap_SPI_SSEL);
+  if (!pinmap_pinout2(dev, obj->pin_mosi, PinMap_SPI_MOSI) ||
+      !pinmap_pinout2(dev, obj->pin_miso, PinMap_SPI_MISO) ||
+      !pinmap_pinout2(dev, obj->pin_sclk, PinMap_SPI_SCLK) ||
+      !pinmap_pinout2(dev, obj->pin_ssel, PinMap_SPI_SSEL))
+  {
+    debugPrintf("ERROR: Not all pins are available for SPI device\n");
+    return;
+  }
 
 #if defined SPI1_BASE
   // Enable SPI clock
@@ -350,64 +302,6 @@ void spi_deinit(spi_t *obj)
 #endif
 }
 
-/**
-  * @brief This function is implemented by user to send data over SPI interface
-  * @param  obj : pointer to spi_t structure
-  * @param  Data : data to be sent
-  * @param  len : length in bytes of the data to be sent
-  * @param  Timeout: Timeout duration in tick
-  * @retval status of the send operation (0) in case of error
-  */
-spi_status_e spi_send(spi_t *obj, uint8_t *Data, uint16_t len, uint32_t Timeout)
-{
-  spi_status_e ret = SPI_OK;
-  HAL_StatusTypeDef hal_status;
-
-  if ((obj == NULL) || (len == 0)) {
-    return SPI_ERROR;
-  }
-
-  hal_status = HAL_SPI_Transmit(&(obj->handle), Data, len, Timeout);
-
-  if (hal_status == HAL_TIMEOUT) {
-    ret = SPI_TIMEOUT;
-  } else if (hal_status != HAL_OK) {
-    ret = SPI_ERROR;
-  }
-
-  return ret;
-}
-
-/**
-  * @brief This function is implemented by user to send/receive data over
-  *         SPI interface
-  * @param  obj : pointer to spi_t structure
-  * @param  tx_buffer : tx data to send before reception
-  * @param  rx_buffer : data to receive
-  * @param  len : length in byte of the data to send and receive
-  * @param  Timeout: Timeout duration in tick
-  * @retval status of the send operation (0) in case of error
-  */
-spi_status_e spi_transfer(spi_t *obj, uint8_t *tx_buffer,
-                          uint8_t *rx_buffer, uint16_t len, uint32_t Timeout)
-{
-  spi_status_e ret = SPI_OK;
-  HAL_StatusTypeDef hal_status;
-
-  if ((obj == NULL) || (len == 0)) {
-    return SPI_ERROR;
-  }
-
-  hal_status = HAL_SPI_TransmitReceive(&(obj->handle), tx_buffer, rx_buffer, len, Timeout);
-
-  if (hal_status == HAL_TIMEOUT) {
-    ret = SPI_TIMEOUT;
-  } else if (hal_status != HAL_OK) {
-    ret = SPI_ERROR;
-  }
-
-  return ret;
-}
 #endif /* HAL_SPI_MODULE_ENABLED */
 
 #ifdef __cplusplus

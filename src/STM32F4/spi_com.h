@@ -96,12 +96,8 @@ typedef enum {
 } spi_status_e;
 
 /* Exported functions ------------------------------------------------------- */
-void spi_init(spi_t *obj, uint32_t spimode, uint32_t speed, spi_mode_e mode, uint8_t msb);
+void spi_init(spi_t *obj, SPI_TypeDef *dev, uint32_t spimode, uint32_t speed, spi_mode_e mode, uint8_t msb);
 void spi_deinit(spi_t *obj);
-spi_status_e spi_send(spi_t *obj, uint8_t *Data, uint16_t len, uint32_t Timeout);
-spi_status_e spi_transfer(spi_t *obj, uint8_t *tx_buffer,
-                          uint8_t *rx_buffer, uint16_t len, uint32_t Timeout);
-uint32_t spi_getClkFreq(spi_t *obj);
 #endif /* HAL_SPI_MODULE_ENABLED */
 
 #ifdef __cplusplus
