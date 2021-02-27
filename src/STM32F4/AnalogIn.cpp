@@ -469,7 +469,7 @@ namespace LegacyAnalogIn
     {
         if (channel == NO_ADC) 
         {
-            debugPrintf("Enable bad ADC channel %d\n", static_cast<int>(channel));
+            //debugPrintf("Enable bad ADC channel %d\n", static_cast<int>(channel));
             return;
         }
         AnalogChannelNumber AdcNo = (channel >> 16);

@@ -216,7 +216,7 @@ static void initTimer() noexcept
     for(uint32_t i = 0; i < MaxPWMChannels; i++)
         States[i].enabled = false;
     uint32_t preScale = SPWMTimer.getTimerClkFreq()/1000000;
-    debugPrintf("ST base freq %d setting presacle %d\n", static_cast<int>(SPWMTimer.getTimerClkFreq()), static_cast<int>(preScale));
+    //debugPrintf("ST base freq %d setting presacle %d\n", static_cast<int>(SPWMTimer.getTimerClkFreq()), static_cast<int>(preScale));
     SPWMTimer.setPrescaleFactor(preScale);
     SPWMTimer.setOverflow(0, TICK_FORMAT);
     SPWMTimer.attachInterrupt(SPWM_Handler);
