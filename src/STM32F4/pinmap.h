@@ -60,7 +60,7 @@ PinName pinmap_pin(void *peripheral, const PinMap *map);
 uint32_t pinmap_find_function(PinName pin, const PinMap *map);
 uint32_t pinmap_function(PinName pin, const PinMap *map);
 void *pinmap_merge_peripheral(void *a, void *b);
-
+uint32_t pin_get_function(PinName pin);
 #ifdef __cplusplus
 }
 #endif

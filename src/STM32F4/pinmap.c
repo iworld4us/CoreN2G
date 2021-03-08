@@ -54,6 +54,52 @@ bool pin_in_pinmap(PinName pin, const PinMap *map)
 /**
  * Configure pin (mode, speed, output type and pull-up/pull-down)
  */
+uint32_t pin_get_function(PinName pin)
+{
+  /* Get the pin informations */
+  uint32_t mode=0;
+  uint32_t afnum=0;
+  uint32_t port = STM_PORT(pin);
+  uint32_t ll_pin  = STM_LL_GPIO_PIN(pin);
+  uint32_t ll_mode = 0;
+
+  if (pin == (PinName)NC) {
+    Error_Handler();
+  }
+  GPIO_TypeDef *gpio = set_GPIO_Port_Clock(port);
+
+  ll_mode = LL_GPIO_GetPinMode(gpio, ll_pin);
+
+  switch (ll_mode) {
+    case LL_GPIO_MODE_INPUT:
+      mode = STM_PIN_INPUT;
+      break;
+    case LL_GPIO_MODE_OUTPUT:
+      mode = LL_GPIO_MODE_OUTPUT;
+      break;
+    case LL_GPIO_MODE_ALTERNATE:
+      ll_mode = LL_GPIO_MODE_ALTERNATE;
+      /* In case of ALT function, also set the afnum */
+      if (STM_PIN(pin) > 7) {
+        afnum = LL_GPIO_GetAFPin_8_15(gpio, ll_pin);
+      } else {
+        afnum = LL_GPIO_GetAFPin_0_7(gpio, ll_pin);
+      }
+      mode = STM_PIN_ALTERNATE;
+      break;
+    case LL_GPIO_MODE_ANALOG:
+      mode = STM_PIN_ANALOG;
+      break;
+    default:
+      Error_Handler();
+      break;
+  }
+  return STM_PIN_DEFINE(mode, 0, afnum);
+}
+
+/**
+ * Configure pin (mode, speed, output type and pull-up/pull-down)
+ */
 void pin_function(PinName pin, int function)
 {
   /* Get the pin informations */
