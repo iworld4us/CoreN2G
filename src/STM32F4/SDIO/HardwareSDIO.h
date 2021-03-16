@@ -38,6 +38,7 @@ public:
 
 private:
     void initDmaStream(DMA_HandleTypeDef& hdma, DMA_Stream_TypeDef *inst, uint32_t chan, IRQn_Type irq, uint32_t dir, uint32_t minc) noexcept;
+    uint8_t tryInit(bool highspeed) noexcept;
     SD_HandleTypeDef hsd;
     DMA_HandleTypeDef dmaRx;
     DMA_HandleTypeDef dmaTx;

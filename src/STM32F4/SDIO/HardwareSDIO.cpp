@@ -67,6 +67,31 @@ void HardwareSDIO::initDmaStream(DMA_HandleTypeDef& hdma, DMA_Stream_TypeDef *in
   NVIC_EnableIRQ(irq);      
 }
 
+uint8_t HardwareSDIO::tryInit(bool highspeed) noexcept
+{
+  uint8_t sd_state = MSD_OK;
+  /* HAL SD initialization */
+  hsd.Instance = SDIO;
+  hsd.Init.ClockEdge = SDIO_CLOCK_EDGE_RISING;
+  hsd.Init.ClockBypass = (highspeed ? SDIO_CLOCK_BYPASS_ENABLE : SDIO_CLOCK_BYPASS_DISABLE);
+  hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
+  hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
+  hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
+  hsd.Init.ClockDiv = 0;
+  sd_state = HAL_SD_Init(&hsd);
+  /* Configure SD Bus width (4 bits mode selected) */
+  if (sd_state == MSD_OK) {
+    /* Enable wide operation */
+    if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK) {
+      debugPrintf("Failed to select wide bus mode highspeed %d\n", highspeed);
+      sd_state = MSD_ERROR;
+    }
+  }
+
+  return sd_state;
+}
+
+
 /**
   * @brief  Initializes the SD card device.
   * @retval SD status
@@ -79,14 +104,6 @@ uint8_t HardwareSDIO::Init(void) noexcept
     return MSD_ERROR;
   }
   __HAL_RCC_SDIO_CLK_ENABLE();
-  /* HAL SD initialization */
-  hsd.Instance = SDIO;
-  hsd.Init.ClockEdge = SDIO_CLOCK_EDGE_RISING;
-  hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_DISABLE;
-  hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
-  hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
-  hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd.Init.ClockDiv = 0;
   pinmap_pinout(PC_8, PinMap_SD);
   pinmap_pinout(PC_9, PinMap_SD);
   pinmap_pinout(PC_10, PinMap_SD);
@@ -100,14 +117,11 @@ uint8_t HardwareSDIO::Init(void) noexcept
   __HAL_LINKDMA(&hsd, hdmarx, dmaRx);
   __HAL_LINKDMA(&hsd, hdmatx, dmaTx);
   waitingTask = 0;
-  sd_state = HAL_SD_Init(&hsd);
-  /* Configure SD Bus width (4 bits mode selected) */
-  if (sd_state == MSD_OK) {
-    /* Enable wide operation */
-    if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK) {
-      sd_state = MSD_ERROR;
-    }
-  }
+  // try to init in highspeed mode
+  sd_state = tryInit(true);
+  if (sd_state != MSD_OK)
+    // switch to standard speed
+    sd_state = tryInit(false);
 
   return sd_state;
 }
@@ -125,16 +139,15 @@ uint8_t HardwareSDIO::ReadBlocks(uint32_t *pData, uint32_t ReadAddr, uint32_t Nu
   uint8_t sd_state = MSD_OK;
   uint32_t start = millis();
 
-  while(HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER && millis() - start < 5000)
+  while(HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER)
   {
-
+    if (millis() - start > 5000)
+    {
+      debugPrintf("SDIO Card not ready on read\n");
+      return MSD_ERROR;
+    }
   }
-  if (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER)
-  {
-    debugPrintf("SDIO Card not ready on read\n");
-    return MSD_ERROR;
-  }
-
+    
   waitingTask = TaskBase::GetCallerTaskHandle();
   HAL_StatusTypeDef stat = HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)pData, ReadAddr, NumOfBlocks);
   if (stat != HAL_OK) {
@@ -162,14 +175,13 @@ uint8_t HardwareSDIO::WriteBlocks(uint32_t *pData, uint32_t WriteAddr, uint32_t 
 {
   uint8_t sd_state = MSD_OK;
   uint32_t start = millis();
-  while(HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER && millis() - start < 5000)
+  while(HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER)
   {
-
-  }
-  if (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER)
-  {
-    debugPrintf("SDIO Card not ready on write\n");
-    return MSD_ERROR;
+    if (millis() - start > 5000)
+    {
+      debugPrintf("SDIO Card not ready on write\n");
+      return MSD_ERROR;
+    }
   }
   waitingTask = TaskBase::GetCallerTaskHandle();
   HAL_StatusTypeDef stat = HAL_SD_WriteBlocks_DMA(&hsd, (uint8_t *)pData, WriteAddr, NumOfBlocks);
