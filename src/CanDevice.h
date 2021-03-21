@@ -172,7 +172,8 @@ public:
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
-	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
+	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
+							unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept;
 
 	uint16_t ReadTimeStampCounter() noexcept
 	{
@@ -246,14 +247,16 @@ private:
 	unsigned int txTimeouts;
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
+	uint32_t lastCancelledId;
 
-	TxEventCallbackFunction txCallback;								// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
+	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
 
 # ifdef RTOS
-	TaskHandle txTaskWaiting[MaxTxBuffers + 1];					// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
-	TaskHandle rxTaskWaiting[MaxRxBuffers + 2];					// tasks waiting for each Rx buffer to receive a message, first 2 entries are for the fifos
-	Bitmap<uint32_t> rxBuffersWaiting;							// which Rx FIFOs and buffers tasks are waiting on
-	Bitmap<uint32_t> txBuffersWaiting;							// which Tx FIFOs and buffers tasks are waiting on
+	// The following are all declared volatile because we care about when they are written
+	volatile TaskHandle txTaskWaiting[MaxTxBuffers + 1];		// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
+	volatile TaskHandle rxTaskWaiting[MaxRxBuffers + 2];		// tasks waiting for each Rx buffer to receive a message, first 2 entries are for the fifos
+	std::atomic<uint32_t> rxBuffersWaiting;						// which Rx FIFOs and buffers tasks are waiting on
+	std::atomic<uint32_t> txBuffersWaiting;						// which Tx FIFOs and buffers tasks are waiting on
 # endif
 
 #if !SAME70

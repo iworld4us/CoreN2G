@@ -292,9 +292,12 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 
 	dev.useFDMode = (p_config.dataSize > 8);							// assume we want standard CAN if the max data size is 8
 	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = dev.txTimeouts = 0;
+	dev.lastCancelledId = 0;
 #ifdef RTOS
-	dev.rxBuffersWaiting.Clear();
-	dev.txBuffersWaiting.Clear();
+	for (volatile TaskHandle& h : dev.txTaskWaiting) { h = nullptr; }
+	for (volatile TaskHandle& h : dev.rxTaskWaiting) { h = nullptr; }
+	dev.rxBuffersWaiting = 0;
+	dev.txBuffersWaiting = 0;
 #endif
 
 	dev.UpdateLocalCanTiming(timing);									// sets NBTP and DBTP
@@ -506,14 +509,14 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 		{
 			TaskBase::ClearNotifyCount();
 			txTaskWaiting[(unsigned int)whichBuffer] = TaskBase::GetCallerTaskHandle();
-			txBuffersWaiting.SetBit((unsigned int)whichBuffer);
+			txBuffersWaiting |= 1u << (unsigned int)whichBuffer;
 			bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
 			if (!bufferFree)
 			{
 				TaskBase::Take(timeout);
 				bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
 			}
-			txBuffersWaiting.ClearBit((unsigned int)whichBuffer);
+			txBuffersWaiting &= ~(1u << (unsigned int)whichBuffer);
 		}
 #else
 		do
@@ -524,28 +527,29 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 	}
 	else
 	{
-		const unsigned int bufferNumber = (unsigned int)whichBuffer - (unsigned int)TxBufferNumber::buffer0;
+		const unsigned int bufferIndex = (unsigned int)whichBuffer - (unsigned int)TxBufferNumber::buffer0;
+		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
 #ifdef RTOS
-		bufferFree = (hw->REG(TXBRP) & ((uint32_t)1 << bufferNumber)) == 0;
+		bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
 		if (!bufferFree && timeout != 0)
 		{
 			TaskBase::ClearNotifyCount();
 			txTaskWaiting[(unsigned int)whichBuffer] = TaskBase::GetCallerTaskHandle();
-			txBuffersWaiting.SetBit((unsigned int)whichBuffer);
-			hw->REG(TXBTIE) |= (uint32_t)1 << bufferNumber;
-			bufferFree = (hw->REG(TXBRP) & ((uint32_t)1 << bufferNumber)) == 0;
+			txBuffersWaiting |= 1u << (unsigned int)whichBuffer;
+			hw->REG(TXBTIE) |= trigMask;
+			bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
 			if (!bufferFree)
 			{
 				TaskBase::Take(timeout);
-				bufferFree = (hw->REG(TXBRP) & ((uint32_t)1 << bufferNumber)) == 0;
+				bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
 			}
-			txBuffersWaiting.ClearBit((unsigned int)whichBuffer);
-			hw->REG(TXBTIE) &= ~((uint32_t)1 << bufferNumber);
+			txBuffersWaiting &= ~(1u << (unsigned int)whichBuffer);
+			hw->REG(TXBTIE) &= ~trigMask;
 		}
 #else
 		do
 		{
-			bufferFree = (hw->REG(TXBRP) & ((uint32_t)1 << bufferNumber)) == 0;
+			bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
 		} while (!bufferFree && millis() - start < timeout);
 #endif
 	}
@@ -637,6 +641,8 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
 		if (!bufferFree)
 		{
+			// Retrieve details of the packet we are about to cancel
+			lastCancelledId = GetTxBuffer(bufferIndex)->T0.bit.ID;
 			// Cancel transmission of the oldest packet
 			hw->REG(TXBCR) = trigMask;
 			do
@@ -741,9 +747,9 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				TaskBase::ClearNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				rxBuffersWaiting.SetBit(waitingIndex);
+				rxBuffersWaiting |= 1u << waitingIndex;
 				const bool success = (READBITS(hw, RXF0S, F0FL) != 0) || (TaskBase::Take(timeout), READBITS(hw, RXF0S, F0FL) != 0);
-				rxBuffersWaiting.ClearBit(waitingIndex);
+				rxBuffersWaiting &= ~(1u << waitingIndex);
 				if (!success)
 				{
 					return false;
@@ -780,9 +786,9 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				TaskBase::ClearNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				rxBuffersWaiting.SetBit(waitingIndex);
+				rxBuffersWaiting |= 1u << waitingIndex;
 				const bool success = (READBITS(hw, RXF1S, F1FL) != 0) || (TaskBase::Take(timeout), READBITS(hw, RXF1S, F1FL) != 0);
-				rxBuffersWaiting.ClearBit(waitingIndex);
+				rxBuffersWaiting &= ~(1u << waitingIndex);
 				if (!success)
 				{
 					return false;
@@ -823,9 +829,9 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				TaskBase::ClearNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				rxBuffersWaiting.SetBit(waitingIndex);
+				rxBuffersWaiting |= 1u << waitingIndex;
 				const bool success = (hw->REG(NDAT1) & ndatMask) != 0 || (TaskBase::Take(timeout), (hw->REG(NDAT1) & ndatMask) != 0);
-				rxBuffersWaiting.ClearBit(waitingIndex);
+				rxBuffersWaiting &= ~(1u << waitingIndex);
 				if (!success)
 				{
 					return false;
@@ -990,7 +996,8 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
-void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept
+void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
+									unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept
 {
 	AtomicCriticalSectionLocker lock;
 
@@ -999,7 +1006,9 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 	rMessagesLost = messagesLost;
 	rBusOffCount = busOffCount;
 	rTxTimeouts = txTimeouts;
+	rLastCancelledId = lastCancelledId;
 	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = txTimeouts = 0;
+	lastCancelledId = 0;
 }
 
 #ifdef RTOS
@@ -1011,18 +1020,18 @@ void CanDevice::Interrupt() noexcept
 	{
 		hw->REG(IR) = ir;
 
-		if (ir & CAN_(IR_RF0N))
+		constexpr unsigned int rxFifo0WaitingIndex = (unsigned int)RxBufferNumber::fifo0;
+		if ((ir & CAN_(IR_RF0N)) && (rxBuffersWaiting & (1u << rxFifo0WaitingIndex)))
 		{
-			constexpr unsigned int waitingIndex = (unsigned int)RxBufferNumber::fifo0;
-			TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
-			rxBuffersWaiting.ClearBit(waitingIndex);
+			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo0WaitingIndex]);
+			rxBuffersWaiting &= ~(1u << rxFifo0WaitingIndex);
 		}
 
-		if (ir & CAN_(IR_RF1N))
+		constexpr unsigned int rxFifo1WaitingIndex = (unsigned int)RxBufferNumber::fifo1;
+		if ((ir & CAN_(IR_RF1N)) && (rxBuffersWaiting & (1u << rxFifo1WaitingIndex)))
 		{
-			constexpr unsigned int waitingIndex = (unsigned int)RxBufferNumber::fifo1;
-			TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
-			rxBuffersWaiting.ClearBit(waitingIndex);
+			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo1WaitingIndex]);
+			rxBuffersWaiting &= ~(1u << rxFifo1WaitingIndex);
 		}
 
 		if (ir & CAN_(IR_DRX))
@@ -1031,14 +1040,14 @@ void CanDevice::Interrupt() noexcept
 			if (config->numRxBuffers != 0)		// needed to avoid a compiler warning
 			{
 				uint32_t newData;
-				while ((newData = hw->REG(NDAT1) & (rxBuffersWaiting.GetRaw() >> 2)) != 0)		// bottom 2 bits of rxBuffersWaiting are for the FIFOs
+				while ((newData = hw->REG(NDAT1) & ((uint32_t)rxBuffersWaiting >> 2)) != 0)		// bottom 2 bits of rxBuffersWaiting are for the FIFOs
 				{
 					const unsigned int waitingIndex = LowestSetBit(newData) + (unsigned int)RxBufferNumber::buffer0;
 					if (waitingIndex < ARRAY_SIZE(rxTaskWaiting))
 					{
 						TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
 					}
-					rxBuffersWaiting.ClearBit(waitingIndex);
+					rxBuffersWaiting &= ~(1u << waitingIndex);
 				}
 			}
 		}
@@ -1052,19 +1061,19 @@ void CanDevice::Interrupt() noexcept
 				const unsigned int bufferNumber = LowestSetBit(transmitDone);
 				hw->REG(TXBTIE) &= ~((uint32_t)1 << bufferNumber);
 				const unsigned int waitingIndex = bufferNumber + (unsigned int)TxBufferNumber::buffer0;
-				if (waitingIndex < ARRAY_SIZE(txTaskWaiting))
+				if (waitingIndex < ARRAY_SIZE(txTaskWaiting) && (txBuffersWaiting & (1u <<waitingIndex)))
 				{
 					TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
+					txBuffersWaiting &= ~(1u << waitingIndex);
 				}
-				txBuffersWaiting.ClearBit(waitingIndex);
 			}
 
 			// Check the tx FIFO
-			if ((txBuffersWaiting.GetRaw() & 1u) != 0 && READBITS(hw, TXFQS, TFFL) != 0)
+			constexpr unsigned int fifoWaitingIndex = (unsigned int)TxBufferNumber::fifo;
+			if ((txBuffersWaiting & (1u << fifoWaitingIndex)) && READBITS(hw, TXFQS, TFFL) != 0)
 			{
-				constexpr unsigned int waitingIndex = (unsigned int)TxBufferNumber::fifo;
-				TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
-				txBuffersWaiting.ClearBit(waitingIndex);
+				TaskBase::GiveFromISR(txTaskWaiting[fifoWaitingIndex]);
+				txBuffersWaiting &= ~(1u << fifoWaitingIndex);
 			}
 		}
 
