@@ -21,7 +21,7 @@
 #include "chip.h"
 #include "SoftwarePWM.h"
 #ifdef LPC_DEBUG
-#include "MessageType.h"
+#include "Platform/MessageType.h"
 #endif
 
 class SoftwarePWMTimer
