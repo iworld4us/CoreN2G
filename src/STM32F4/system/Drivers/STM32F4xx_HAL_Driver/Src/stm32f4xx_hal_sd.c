@@ -2586,10 +2586,32 @@ static void SD_DMAReceiveCplt(DMA_HandleTypeDef *hdma)
   /* Disable the DMA transfer for transmit request by setting the DMAEN bit
   in the SD DCTRL register */
   hsd->Instance->DCTRL &= (uint32_t)~((uint32_t)SDIO_DCTRL_DMAEN);
-
+  // Sometimes a read operation can complete so fast that the command
+  // status has not yet been read. This then gives a read timeout
+  // See: https://community.st.com/s/question/0D50X00009XkeZ4SAJ/stm32l4-sdmmc-command-timeout
+#if 1
+  /* Check current state of Command Register and don't clear those flags */
+  if (hsd->Context == (SD_CONTEXT_READ_SINGLE_BLOCK | SD_CONTEXT_DMA))
+  {
+    if (__HAL_SD_GET_FLAG(hsd, SDIO_STA_CMDREND)) {
+      /* Clear only selected flags */
+      __HAL_SD_CLEAR_FLAG(hsd, ((uint32_t)(SDIO_STA_DCRCFAIL | SDIO_STA_CTIMEOUT |
+      SDIO_STA_TXUNDERR | SDIO_STA_RXOVERR |
+      SDIO_STA_CMDSENT | SDIO_STA_DATAEND | SDIO_STA_DBCKEND)));
+    } else {
+      /* Clear all the static flags */
+      __HAL_SD_CLEAR_FLAG(hsd, SDMMC_STATIC_FLAGS);
+    }
+  }
+  else
+  {
+    /* Clear all the static flags */
+    __HAL_SD_CLEAR_FLAG(hsd, SDMMC_STATIC_FLAGS);
+  }
+#else
   /* Clear all the static flags */
   __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
-
+#endif
   hsd->State = HAL_SD_STATE_READY;
 
 #if (USE_HAL_SD_REGISTER_CALLBACKS == 1)

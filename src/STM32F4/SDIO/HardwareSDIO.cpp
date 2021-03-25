@@ -117,12 +117,17 @@ uint8_t HardwareSDIO::Init(void) noexcept
   __HAL_LINKDMA(&hsd, hdmarx, dmaRx);
   __HAL_LINKDMA(&hsd, hdmatx, dmaTx);
   waitingTask = 0;
+  // Some SD cards are not happy writing when using 48MHz
+  // so for now we stick with 24.
+#if 0
   // try to init in highspeed mode
   sd_state = tryInit(true);
   if (sd_state != MSD_OK)
     // switch to standard speed
     sd_state = tryInit(false);
-
+#else
+  sd_state = tryInit(false);
+#endif
   return sd_state;
 }
 
@@ -147,7 +152,7 @@ uint8_t HardwareSDIO::ReadBlocks(uint32_t *pData, uint32_t ReadAddr, uint32_t Nu
       return MSD_ERROR;
     }
   }
-    
+  
   waitingTask = TaskBase::GetCallerTaskHandle();
   HAL_StatusTypeDef stat = HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)pData, ReadAddr, NumOfBlocks);
   if (stat != HAL_OK) {
