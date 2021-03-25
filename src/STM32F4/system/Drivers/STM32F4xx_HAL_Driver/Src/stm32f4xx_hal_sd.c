@@ -2586,6 +2586,9 @@ static void SD_DMAReceiveCplt(DMA_HandleTypeDef *hdma)
   /* Disable the DMA transfer for transmit request by setting the DMAEN bit
   in the SD DCTRL register */
   hsd->Instance->DCTRL &= (uint32_t)~((uint32_t)SDIO_DCTRL_DMAEN);
+  // Sometimes a read operation can complete so fast that the command
+  // status has not yet been read. This then gives a read timeout
+  // See: https://community.st.com/s/question/0D50X00009XkeZ4SAJ/stm32l4-sdmmc-command-timeout
 #if 1
   /* Check current state of Command Register and don't clear those flags */
   if (hsd->Context == (SD_CONTEXT_READ_SINGLE_BLOCK | SD_CONTEXT_DMA))
