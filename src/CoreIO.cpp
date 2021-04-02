@@ -638,6 +638,13 @@ void WatchdogReset() noexcept
 #endif
 }
 
+#if STM32F4
+void WatchdogDisable() noexcept
+{
+    __HAL_RCC_WWDG_CLK_DISABLE();
+}
+#endif
+
 #if SAM4E || SAME70
 
 void WatchdogResetSecondary() noexcept
