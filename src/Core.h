@@ -479,6 +479,12 @@ static inline bool inInterrupt() noexcept
 	return (__get_IPSR() & 0x01FF) != 0;
 }
 
+#if STM32F4
+#define TASKMEM __attribute__((section(".ccmram")))
+#else
+#define TASKMEM
+#endif
+
 #ifdef __cplusplus
 }		// end extern "C"
 #endif
