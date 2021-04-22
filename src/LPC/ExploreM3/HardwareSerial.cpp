@@ -129,26 +129,26 @@ int HardwareSerial::peek(void) noexcept
 
 int HardwareSerial::available(void) noexcept
 {
-    irqflags_t flags = cpu_irq_save();
+    irqflags_t flags = IrqSave();
     int avail = RingBuffer_GetCount(&this->rxRingBuffer);
-    cpu_irq_restore(flags);
+    IrqRestore(flags);
     return avail;
 }
 
 int HardwareSerial::availableForWrite(void) noexcept
 {
     //return number for free items in the txRingBuffer
-    irqflags_t flags = cpu_irq_save();
+    irqflags_t flags = IrqSave();
     int avail = RingBuffer_GetFree(&this->txRingBuffer);
-    cpu_irq_restore(flags);
+    IrqRestore(flags);
     return avail;
 }
 
 size_t HardwareSerial::canWrite() noexcept
 {
-    irqflags_t flags = cpu_irq_save();
+    irqflags_t flags = IrqSave();
     int avail = RingBuffer_GetFree(&this->txRingBuffer);
-    cpu_irq_restore(flags);
+    IrqRestore(flags);
     return avail;
 }
 

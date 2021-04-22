@@ -84,7 +84,7 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, enum InterruptM
     //Each port pin can be programmed to generate an interrupt on a rising edge, a falling edge, or both.
     if(portNumber == 0 || portNumber == 2 )
     {
-        const irqflags_t flags = cpu_irq_save();
+        const irqflags_t flags = IrqSave();
 
         ExternalInterruptPins[slot] = pin; // add the pin to the array
 
@@ -149,7 +149,7 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, enum InterruptM
                 
         }
 
-        cpu_irq_restore(flags);
+        IrqRestore(flags);
         
     }
     else
@@ -167,7 +167,7 @@ void detachInterrupt(Pin pin) noexcept
     const uint8_t portNumber =  (pin>>5);  //Divide the pin number by 32 go get the PORT number
     const uint8_t var_pinNumber_u8  =   pin & 0x1f;  //lower 5-bits contains the bit number of a 32bit port
 
-    const irqflags_t flags = cpu_irq_save();
+    const irqflags_t flags = IrqSave();
 
     for(size_t i=0; i<MaxExtIntEntries; i++)
     {
@@ -191,7 +191,7 @@ void detachInterrupt(Pin pin) noexcept
         util_BitClear(LPC_GPIOINT->IO2.ENR, var_pinNumber_u8); //Rising
     }
     
-    cpu_irq_restore(flags);
+    IrqRestore(flags);
 
     
 }

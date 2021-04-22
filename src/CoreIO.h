@@ -142,6 +142,12 @@ void ClearPinFunction(Pin p) noexcept;
 // Enable or disable the pullup[ resistor
 void SetPullup(Pin p, bool on) noexcept;
 
+// Enable the pullup resistor
+void EnablePullup(Pin p) noexcept;
+
+// Disable the pullup resistor
+void DisablePullup(Pin p) noexcept;
+
 // Set the mode of a pin with optional debouncing
 void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff) noexcept;
 
@@ -219,13 +225,13 @@ inline void memcpyf(float *dst, const float *src, size_t numFloats) noexcept
 class AtomicCriticalSectionLocker
 {
 public:
-	AtomicCriticalSectionLocker() : flags(cpu_irq_save())
+	AtomicCriticalSectionLocker() : flags(IrqSave())
 	{
 	}
 
 	~AtomicCriticalSectionLocker()
 	{
-		cpu_irq_restore(flags);
+		IrqRestore(flags);
 	}
 
 private:

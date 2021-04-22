@@ -38,6 +38,22 @@ void *operator new[](size_t size)
     return mem;
 }
 
+void* operator new(size_t size, std::align_val_t align)
+{
+    void *mem = pvPortMalloc(size);
+    if (mem != nullptr)
+        memset(mem, 0, size);
+    return mem;
+}
+
+void *operator new[](size_t size, std::align_val_t align)
+{
+    void *mem = pvPortMalloc(size);
+    if (mem != nullptr)
+        memset(mem, 0, size);
+    return mem;
+}
+
 void operator delete(void * ptr)
 {
         vPortFree(ptr);
@@ -49,6 +65,22 @@ void operator delete(void *ptr , std::size_t)
 }
 
 void operator delete[](void * ptr)
+{
+        vPortFree(ptr);
+}
+
+void operator delete(void * ptr, std::align_val_t align)
+{
+        vPortFree(ptr);
+}
+
+
+void operator delete(void *ptr , std::size_t, std::align_val_t align)
+{
+        vPortFree(ptr);
+}
+
+void operator delete[](void * ptr, std::align_val_t align)
 {
         vPortFree(ptr);
 }

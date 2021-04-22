@@ -34,11 +34,14 @@ namespace AnalogIn
 #ifdef RTOS
 	// Initialise the analog input subsystem. Call this just once.
 	// For the SAME5x we need 4 DMA channels. For the SAMC21 we need 1 DMA channel, or 2 if supporting the SDADC.
-	void Init(DmaChannel dmaChan,
+	void Init(
 #if SAME5x
-		DmaPriority txPriority,
+				NvicPriority interruptPriority
+#else
+				DmaChannel dmaChan,
+				DmaPriority rxPriority
 #endif
-		DmaPriority rxPriority) noexcept;
+			) noexcept;
 
 	// Shut down the analog system. making it safe to terminate the AnalogIn task
 	void Exit() noexcept;
@@ -63,7 +66,7 @@ namespace AnalogIn
 	uint16_t ReadChannel(AdcInput adcin) noexcept;
 
 	// Get the number of conversions that were started
-	void GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts) noexcept;
+	void GetDebugInfo(uint32_t &convsStarted, uint32_t &convsCompleted, uint32_t &convTimeouts, uint32_t& errs) noexcept;
 
 #if SAME5x
 	// Enable an on-chip MCU temperature sensor. We don't use this on the SAMC21 because that chip has a separate TSENS peripheral.
