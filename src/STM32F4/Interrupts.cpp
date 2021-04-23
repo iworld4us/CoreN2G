@@ -18,6 +18,7 @@
 
 #include "PinAF_STM32F1.h"
 #include "interrupt.h"
+extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 bool attachInterrupt(Pin pin, StandardCallbackFunction callback, enum InterruptMode mode, CallbackParameter param) noexcept
 {
@@ -49,7 +50,11 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, enum InterruptM
   pinF1_DisconnectDebug(p);
 #endif /* STM32F1xx */
 
-  stm32_interrupt_enable(port, STM_GPIO_PIN(p), callback, it_mode, param);
+  if (!stm32_interrupt_enable(port, STM_GPIO_PIN(p), callback, it_mode, param))
+  {
+    debugPrintf("Failed to attach interrupt to pin %c.%d\n", (int)('A'+STM_PORT(p)), STM_GPIO_PIN(p));
+    return false;
+  }
 #else
   UNUSED(pin);
   UNUSED(callback);

@@ -108,7 +108,7 @@ static uint8_t get_pin_id(uint16_t pin)
   return id;
 }
 
-void stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFunction callback, uint32_t mode, CallbackParameter param)
+bool stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFunction callback, uint32_t mode, CallbackParameter param)
 {
   GPIO_InitTypeDef GPIO_InitStruct;
   uint8_t id = get_pin_id(pin);
@@ -159,7 +159,7 @@ void stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFu
     GPIO_InitStruct.Pull = GPIO_NOPULL;
   }
 #endif /* STM32F1xx */
-
+  if (gpio_irq_conf[id].callback != NULL) return false;
   GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
 
   HAL_GPIO_Init(port, &GPIO_InitStruct);
@@ -170,6 +170,7 @@ void stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFu
   // Enable and set EXTI Interrupt
   //HAL_NVIC_SetPriority(gpio_irq_conf[id].irqnb, EXTI_IRQ_PRIO, EXTI_IRQ_SUBPRIO);
   HAL_NVIC_EnableIRQ(gpio_irq_conf[id].irqnb);
+  return true;
 }
 
 #if 0

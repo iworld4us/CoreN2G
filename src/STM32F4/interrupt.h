@@ -67,7 +67,7 @@
 //#endif
 
 /* Exported functions ------------------------------------------------------- */
-void stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFunction callback, uint32_t mode, CallbackParameter param);
+bool stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFunction callback, uint32_t mode, CallbackParameter param);
 void stm32_interrupt_disable(GPIO_TypeDef *port, uint16_t pin);
 #endif /* !HAL_EXTI_MODULE_DISABLED */
 
