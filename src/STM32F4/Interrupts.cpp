@@ -52,7 +52,7 @@ bool attachInterrupt(Pin pin, StandardCallbackFunction callback, enum InterruptM
 
   if (!stm32_interrupt_enable(port, STM_GPIO_PIN(p), callback, it_mode, param))
   {
-    debugPrintf("Failed to attach interrupt to pin %c.%d\n", (int)('A'+STM_PORT(p)), STM_GPIO_PIN(p));
+    debugPrintf("Failed to attach interrupt to pin %c.%d\n", (int)('A'+STM_PORT(p)), (int)STM_PIN(p));
     return false;
   }
 #else

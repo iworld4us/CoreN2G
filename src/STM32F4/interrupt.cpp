@@ -159,7 +159,7 @@ bool stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFu
     GPIO_InitStruct.Pull = GPIO_NOPULL;
   }
 #endif /* STM32F1xx */
-  if (gpio_irq_conf[id].callback != NULL) return false;
+  if (gpio_irq_conf[id].callback != NULL && gpio_irq_conf[id].callback != callback) return false;
   GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
 
   HAL_GPIO_Init(port, &GPIO_InitStruct);
