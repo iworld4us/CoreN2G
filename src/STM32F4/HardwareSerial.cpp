@@ -34,23 +34,23 @@
 // SerialEvent functions are weak, so when the user doesn't define them,
 // the linker just sets their address to 0 (which is checked below).
 #if defined(HAVE_HWSERIAL1)
-HardwareSerial Serial1(USART1);
+TASKMEM HardwareSerial Serial1(USART1);
 void serialEvent1() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL2)
-HardwareSerial Serial2(USART2);
+TASKMEM HardwareSerial Serial2(USART2);
 void serialEvent2() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL3)
-HardwareSerial Serial3(USART3);
+TASKMEM HardwareSerial Serial3(USART3);
 void serialEvent3() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL4)
 #if defined(USART4)
-HardwareSerial Serial4(USART4);
+TASKMEM HardwareSerial Serial4(USART4);
 #else
 HardwareSerial Serial4(UART4);
 #endif
@@ -59,7 +59,7 @@ void serialEvent4() __attribute__((weak));
 
 #if defined(HAVE_HWSERIAL5)
 #if defined(USART5)
-HardwareSerial Serial5(USART5);
+TASKMEM HardwareSerial Serial5(USART5);
 #else
 HardwareSerial Serial5(UART5);
 #endif
@@ -67,40 +67,40 @@ void serialEvent5() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL6)
-HardwareSerial Serial6(USART6);
+TASKMEM HardwareSerial Serial6(USART6);
 void serialEvent6() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL7)
 #if defined(USART7)
-HardwareSerial Serial7(USART7);
+TASKMEM HardwareSerial Serial7(USART7);
 #else
-HardwareSerial Serial7(UART7);
+TASKMEM HardwareSerial Serial7(UART7);
 #endif
 void serialEvent7() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL8)
 #if defined(USART8)
-HardwareSerial Serial8(USART8);
+TASKMEM HardwareSerial Serial8(USART8);
 #else
-HardwareSerial Serial8(UART8);
+TASKMEM HardwareSerial Serial8(UART8);
 #endif
 void serialEvent8() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL9)
-HardwareSerial Serial9(UART9);
+TASKMEM HardwareSerial Serial9(UART9);
 void serialEvent9() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIAL10)
-HardwareSerial Serial10(UART10);
+TASKMEM HardwareSerial Serial10(UART10);
 void serialEvent10() __attribute__((weak));
 #endif
 
 #if defined(HAVE_HWSERIALLP1)
-HardwareSerial SerialLP1(LPUART1);
+TASKMEM HardwareSerial SerialLP1(LPUART1);
 void serialEventLP1() __attribute__((weak));
 #endif
 #endif // HAVE_HWSERIALx

@@ -19,54 +19,6 @@ ConfigurableUART::ConfigurableUART() noexcept
 }
 
 
-enum uartPinDirection_t:uint8_t
-{
-    TX = 0,
-    RX
-};
-
-struct uartPin_t
-{
-    Pin upin;
-    uint8_t uartNumber;
-    uartPinDirection_t dir;
-    uint8_t pinselFunction;
-};
-
-const uartPin_t uartPins[] =
-{
-#if 0
-    //UART 0
-    {P0_2,  0, TX, PINSEL_FUNC_1},
-    {P0_3,  0, RX, PINSEL_FUNC_1},
-#endif    
-#if defined(ENABLE_UART1)
-    //UART1
-    {P0_15, 1, TX, PINSEL_FUNC_1},
-    {P0_16, 1, RX, PINSEL_FUNC_1},
-    {P2_0,  1, TX, PINSEL_FUNC_2},
-    {P2_1,  1, RX, PINSEL_FUNC_2},
-#endif
-
-#if defined(ENABLE_UART2)
-    //UART2
-    {P0_10, 2, TX, PINSEL_FUNC_1},
-    {P0_11, 2, RX, PINSEL_FUNC_1},
-    {P2_8,  2, TX, PINSEL_FUNC_2},
-    {P2_9,  2, RX, PINSEL_FUNC_2},
-#endif
-
-#if defined(ENABLE_UART3)
-    //UART3
-    {P0_0,  3, TX, PINSEL_FUNC_2},
-    {P0_1,  3, RX, PINSEL_FUNC_2},
-    {P0_25, 3, TX, PINSEL_FUNC_3},
-    {P0_26, 3, RX, PINSEL_FUNC_3},
-    {P4_28, 3, TX, PINSEL_FUNC_3},
-    {P4_29, 3, RX, PINSEL_FUNC_3},
-#endif
-};
-
 int8_t ConfigurableUART::GetUARTPortNumber() noexcept
 {
     if(serialPort == nullptr) return -1;
@@ -111,7 +63,7 @@ bool ConfigurableUART::Configure(Pin rx, Pin tx) noexcept
         if (rxDev == USART4)
             serialPort = &Serial4;
 #else
-        if (rxDev UART4)
+        if (rxDev == UART4)
             serialPort = &Serial4;
 #endif
 #endif
