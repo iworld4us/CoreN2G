@@ -91,6 +91,7 @@ SECTIONS
   .text ALIGN(4):
   {
     . = ALIGN(4);
+    __etext_start = .;
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */
