@@ -193,7 +193,11 @@ void spi_init(spi_t *obj, SPI_TypeDef *dev, uint32_t spimode, uint32_t speed, sp
     debugPrintf("ERROR: Not all pins are available for SPI device\n");
     return;
   }
-
+  if (spimode == SPI_MODE_SLAVE)
+  {
+    uint32_t pull = (handle->Init.CLKPolarity == SPI_POLARITY_LOW) ? GPIO_PULLDOWN : GPIO_PULLUP;
+    pin_PullConfig(get_GPIO_Port(STM_PORT(obj->pin_sclk)), STM_LL_GPIO_PIN(obj->pin_sclk), pull);
+  }
 #if defined SPI1_BASE
   // Enable SPI clock
   if (handle->Instance == SPI1) {
