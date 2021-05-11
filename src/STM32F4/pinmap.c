@@ -124,14 +124,20 @@ void pin_function(PinName pin, int function)
 #if defined (STM32F1xx)
   if (mode == STM_PIN_OUTPUT) {
 #endif
+#if 1
+    LL_GPIO_SetPinSpeed(gpio, ll_pin, LL_GPIO_SPEED_FREQ_MEDIUM);
+#else
+
 #ifdef LL_GPIO_SPEED_FREQ_VERY_HIGH
     LL_GPIO_SetPinSpeed(gpio, ll_pin, LL_GPIO_SPEED_FREQ_VERY_HIGH);
 #else
     LL_GPIO_SetPinSpeed(gpio, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
 #endif
+#endif
 #if defined (STM32F1xx)
   }
 #endif
+
 
   switch (mode) {
     case STM_PIN_INPUT:
