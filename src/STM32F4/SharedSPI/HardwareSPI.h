@@ -7,8 +7,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "spi_com.h"
-//extern "C" void DMA2_Stream2_IRQHandler(void) noexcept;
-//extern "C" void DMA2_Stream3_IRQHandler(void) noexcept;
+#if SPI1DMA
+extern "C" void DMA2_Stream2_IRQHandler(void) noexcept;
+extern "C" void DMA2_Stream3_IRQHandler(void) noexcept;
+#endif
 extern "C" void DMA1_Stream3_IRQHandler(void) noexcept;
 extern "C" void DMA1_Stream4_IRQHandler(void) noexcept;
 extern "C" void DMA1_Stream0_IRQHandler(void) noexcept;
@@ -47,12 +49,14 @@ private:
     bool initComplete;
     SPICallbackFunction callback;
     TaskHandle_t waitingTask;
-
+    bool transferActive;
     void initDmaStream(DMA_HandleTypeDef& hdma, DMA_Stream_TypeDef *inst, uint32_t chan, IRQn_Type irq, uint32_t dir, uint32_t minc) noexcept;
     void startTransferAndWait(const uint8_t *tx_data, uint8_t *rx_data, size_t len) noexcept;
 
-    //friend void DMA2_Stream2_IRQHandler() noexcept;
-    //friend void DMA2_Stream3_IRQHandler() noexcept;
+#if SPI1DMA
+    friend void DMA2_Stream2_IRQHandler() noexcept;
+    friend void DMA2_Stream3_IRQHandler() noexcept;
+#endif
     friend void DMA1_Stream3_IRQHandler() noexcept;
     friend void DMA1_Stream4_IRQHandler() noexcept;
     friend void DMA1_Stream0_IRQHandler() noexcept;

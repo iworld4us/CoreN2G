@@ -63,6 +63,7 @@ void HardwareSPI::disable() noexcept
         flushRxFifo(&spi.handle);
         spi_deinit(&spi);
         initComplete = false;
+        transferActive = false;
     }
 }
 
@@ -75,8 +76,8 @@ bool HardwareSPI::waitForTxEmpty() noexcept
 extern "C" void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) noexcept
 {
     // Get pointer to containing object
-    __HAL_SPI_DISABLE(hspi);
     HardwareSPI *s = (HardwareSPI *)((uint8_t *)hspi - ((uint8_t *)&(HardwareSPI::SSP1.spi.handle) - (uint8_t *)&HardwareSPI::SSP1));
+    s->transferActive = false;
     if (s->callback) s->callback(s);    
 }
 
@@ -84,19 +85,21 @@ extern "C" void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) noexcept
 {
     // Get pointer to containing object 
     HardwareSPI *s = (HardwareSPI *)((uint8_t *)hspi - ((uint8_t *)&(HardwareSPI::SSP1.spi.handle) - (uint8_t *)&HardwareSPI::SSP1));
-    __HAL_SPI_DISABLE(hspi);
+    s->transferActive = false;
     if (s->callback) s->callback(s);    
 }    
 
-//extern "C" void DMA2_Stream2_IRQHandler()
-//{
-//    HAL_DMA_IRQHandler(&(HardwareSPI::SSP1.dmaRx));    
-//}
+#if SPI1DMA
+extern "C" void DMA2_Stream2_IRQHandler()
+{
+    HAL_DMA_IRQHandler(&(HardwareSPI::SSP1.dmaRx));
+}
 
-//extern "C" void DMA2_Stream3_IRQHandler()
-//{
-//    HAL_DMA_IRQHandler(&(HardwareSPI::SSP1.dmaTx));    
-//}
+extern "C" void DMA2_Stream3_IRQHandler()
+{
+    HAL_DMA_IRQHandler(&(HardwareSPI::SSP1.dmaTx));
+}
+#endif
 
 extern "C" void DMA1_Stream3_IRQHandler()
 {
@@ -184,6 +187,7 @@ void HardwareSPI::configureDevice(uint32_t deviceMode, uint32_t bits, uint32_t c
         spi.pin_ssel = cs;
         spi_init(&spi, dev, deviceMode, bitRate, (spi_mode_e)clockMode, 1);
         initComplete = true;
+        transferActive = false;
         curBitRate = bitRate;
         curBits = bits;
         curClockMode = clockMode;
@@ -196,14 +200,12 @@ void HardwareSPI::configureDevice(uint32_t bits, uint32_t clockMode, uint32_t bi
     configureDevice(SPI_MODE_MASTER, bits, clockMode, bitRate, false);
 }
 
-
-HardwareSPI::HardwareSPI(SPI_TypeDef *spi) noexcept : dev(spi), initComplete(false)
+HardwareSPI::HardwareSPI(SPI_TypeDef *spi) noexcept : dev(spi), initComplete(false), transferActive(false)
 {
     curBitRate = 0xffffffff;
     curClockMode = 0xffffffff;
     curBits = 0xffffffff;
 }
-
 
 void HardwareSPI::startTransfer(const uint8_t *tx_data, uint8_t *rx_data, size_t len, SPICallbackFunction ioComplete) noexcept
 {
@@ -231,6 +233,7 @@ void HardwareSPI::startTransfer(const uint8_t *tx_data, uint8_t *rx_data, size_t
 
     HAL_StatusTypeDef status;    
     callback = ioComplete;
+    transferActive = true;
     if (rx_data == nullptr)
         status = HAL_SPI_Transmit_DMA(&(spi.handle), (uint8_t *)tx_data, len);
     else if (tx_data == nullptr)
@@ -250,20 +253,26 @@ void HardwareSPI::stopTransfer() noexcept
     // re-init the device, so we just do that.
     if (initComplete)
     {
-        disable();
-        configureDevice(spi.handle.Init.Mode, curBits, curClockMode, curBitRate, spi.pin_ssel != NoPin);
+        if (transferActive)
+        {
+            disable();
+            configureDevice(spi.handle.Init.Mode, curBits, curClockMode, curBitRate, spi.pin_ssel != NoPin);
+        }
+        __HAL_SPI_DISABLE(&(spi.handle));
     }
 }
 
 void HardwareSPI::startTransferAndWait(const uint8_t *tx_data, uint8_t *rx_data, size_t len) noexcept
 {
     HAL_StatusTypeDef status;
+    transferActive = true;
     if (rx_data == nullptr)
         status = HAL_SPI_Transmit(&(spi.handle), (uint8_t *)tx_data, len, SPITimeoutMillis);
     else if (tx_data == nullptr)
         status = HAL_SPI_TransmitReceive(&(spi.handle), rx_data, rx_data, len, SPITimeoutMillis);
     else
         status = HAL_SPI_TransmitReceive(&(spi.handle), (uint8_t *)tx_data, rx_data, len, SPITimeoutMillis);
+    transferActive = true;
     if (status != HAL_OK)
         debugPrintf("SPI Error %d\n", (int)status);
 }
@@ -281,6 +290,7 @@ spi_status_t HardwareSPI::transceivePacket(const uint8_t *tx_data, uint8_t *rx_d
             ret = SPI_TIMEOUT;
             debugPrintf("SPI timeout\n");
         }
+        waitingTask = 0;
         return ret;
     }
     else
