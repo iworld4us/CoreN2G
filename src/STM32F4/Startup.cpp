@@ -34,7 +34,8 @@ void initVariant() { }
 // Otherwise, statically allocated objects that need HAL may fail.
 __attribute__((constructor(101))) void premain()
 {
-
+  // Make sure that we run the startup code with interrupts disabled
+  IrqDisable();
   // Required by FreeRTOS, see http://www.freertos.org/RTOS-Cortex-M3-M4.html
 #ifdef NVIC_PRIORITYGROUP_4
   HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
