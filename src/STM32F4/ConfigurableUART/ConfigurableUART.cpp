@@ -256,8 +256,16 @@ ConfigurableUART::Errors ConfigurableUART::GetAndClearErrors() noexcept
 	Errors errs;
     flush();
     errs.uartOverrun = 0;
-    errs.bufferOverrun = serialPort->_serial.rx_full;
-    errs.framing = serialPort->_serial.hw_error;
-    serialPort->_serial.hw_error = serialPort->_serial.rx_full = 0;
+    if (serialPort != nullptr)
+    {
+        errs.bufferOverrun = serialPort->_serial.rx_full;
+        errs.framing = serialPort->_serial.hw_error;
+        serialPort->_serial.hw_error = serialPort->_serial.rx_full = 0;
+    }
+    else
+    {
+        errs.bufferOverrun = 0;
+        errs.framing = 0;
+    }
 	return errs;
 }
