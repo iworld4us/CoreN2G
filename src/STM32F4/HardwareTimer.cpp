@@ -1161,6 +1161,9 @@ extern "C" {
   }
 #endif //TIM4_BASE
 
+#if 0
+// NOTE: In RRF TIM5 is used for the Step Timer, that code handles
+// the timer interrupt directly to reduce overhead.
 #if defined(TIM5_BASE)
   /**
     * @brief  TIM5 IRQHandler
@@ -1174,6 +1177,7 @@ extern "C" {
     }
   }
 #endif //TIM5_BASE
+#endif
 
 #if defined(TIM6_BASE)
   /**
@@ -1189,6 +1193,9 @@ extern "C" {
   }
 #endif //TIM6_BASE
 
+#if 0
+// NOTE: In RRF TIM7 is used for software based PWM output, that code handles
+// the timer interrupt directly to reduce overhead.
 #if defined(TIM7_BASE)
   /**
     * @brief  TIM7 IRQHandler
@@ -1202,6 +1209,7 @@ extern "C" {
     }
   }
 #endif //TIM7_BASE
+#endif
 
 #if defined(TIM8_BASE)
   /**

@@ -4,7 +4,8 @@
 #include "HybridPWM.h"
 extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 //#define LPC_DEBUG
-HardwareTimer SPWMTimer(TIM7);
+#define SPWM_TIMER TIM7
+HardwareTimer SPWMTimer(SPWM_TIMER);
 
 // Minimum period between interrupts - in microseconds (to prevent starving other tasks)
 static constexpr uint32_t MinimumInterruptDeltaUS = 50;
@@ -25,6 +26,7 @@ static int32_t endActive = -1;
 static uint32_t baseTime;
 static uint32_t baseDelta;
 static bool timerReady = false;
+static TIM_HandleTypeDef *timerHandle;
 
 static SoftwarePWM PWMChans[MaxPWMChannels];
 
@@ -125,9 +127,17 @@ static void adjustOnOffTime(int chan, uint32_t onTime, uint32_t offTime)
     s.newTimes = true;
 }
 
-extern "C" void RIT_IRQHandler(HardwareTimer *) __attribute__ ((hot));
+// We handle interrupts directly to reduce overhead so this function
+// is just a placeholder
+extern "C" void SPWM_Handler(HardwareTimer *) __attribute__ ((hot));
 void SPWM_Handler(HardwareTimer * notused)
-{ 
+{
+}
+
+extern "C" void TIM7_IRQHandler(void) noexcept __attribute__((optimize("O2")));
+void TIM7_IRQHandler(void) noexcept
+{
+    __HAL_TIM_CLEAR_IT(timerHandle, TIM_IT_UPDATE); 
 #ifdef LPC_DEBUG
     pwmInts++;
     const uint32_t startTime = SPWMTimer.getCount();;
@@ -196,7 +206,7 @@ void SPWM_Handler(HardwareTimer * notused)
     // Set the new compare value
     if (next > 0xffff) next = 0xffff;
     baseDelta = next;
-	SPWMTimer.setOverflow(next, TICK_FORMAT);
+    __HAL_TIM_SET_AUTORELOAD(timerHandle, next-1);
 #ifdef LPC_DEBUG
     if (next >= 0xffff) pwmVBigDelta++;
     if (SPWMTimer.getCount(TICK_FORMAT) >= next)
@@ -220,6 +230,7 @@ static void initTimer() noexcept
     SPWMTimer.setPrescaleFactor(preScale);
     SPWMTimer.setOverflow(0, TICK_FORMAT);
     SPWMTimer.attachInterrupt(SPWM_Handler);
+    timerHandle = &(HardwareTimer_Handle[get_timer_index(SPWM_TIMER)]->handle);
     timerReady = true;
 }
 
