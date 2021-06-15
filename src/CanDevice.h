@@ -150,8 +150,14 @@ public:
 	// Wait for a transmit buffer to become free, with timeout. Return true if it's free.
 	bool IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) noexcept;
 
+#if 0	// not currently used
+	// Return the number of messages waiting to be sent in the transmit FIFO
+	unsigned int NumTxMessagesPending(TxBufferNumber whichBuffer) noexcept;
+#endif
+
 	// Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
-	void SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
+	// Returns the ID of the message that was cancelled, or 0 if we didn't cancel a message.
+	uint32_t SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
 
 	// Receive a message in a buffer or fifo, with timeout. Returns true if successful, false if no message available even after the timeout period.
 	bool ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept;
@@ -173,8 +179,7 @@ public:
 
 	void SetLocalCanTiming(const CanTiming& timing) noexcept;
 
-	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
-							unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept;
+	void GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept;
 
 	uint16_t ReadTimeStampCounter() noexcept
 	{
@@ -245,10 +250,8 @@ private:
 
 	unsigned int messagesQueuedForSending;
 	unsigned int messagesReceived;
-	unsigned int txTimeouts;
 	unsigned int messagesLost;									// count of received messages lost because the receive FIFO was full
 	unsigned int busOffCount;									// count of the number of times we have reset due to bus off
-	uint32_t lastCancelledId;
 
 	TxEventCallbackFunction txCallback;							// function that gets called by the ISR when a transmit event for a message with a nonzero marker occurs
 
@@ -256,8 +259,7 @@ private:
 	// The following are all declared volatile because we care about when they are written
 	volatile TaskHandle txTaskWaiting[MaxTxBuffers + 1];		// tasks waiting for each Tx buffer to become free, first entry is for the Tx FIFO
 	volatile TaskHandle rxTaskWaiting[MaxRxBuffers + 2];		// tasks waiting for each Rx buffer to receive a message, first 2 entries are for the fifos
-	std::atomic<uint32_t> rxBuffersWaiting;						// which Rx FIFOs and buffers tasks are waiting on
-	std::atomic<uint32_t> txBuffersWaiting;						// which Tx FIFOs and buffers tasks are waiting on
+	std::atomic<uint32_t> rxBuffersWaiting;						// which buffers tasks are waiting on
 # endif
 
 #if !SAME70

@@ -291,13 +291,11 @@ inline CanDevice::TxEvent *CanDevice::GetTxEvent(uint32_t index) const noexcept 
 	dev.txBuffers = memStart;
 
 	dev.useFDMode = (p_config.dataSize > 8);							// assume we want standard CAN if the max data size is 8
-	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = dev.txTimeouts = 0;
-	dev.lastCancelledId = 0;
+	dev.messagesQueuedForSending = dev.messagesReceived = dev.messagesLost = dev.busOffCount = 0;
 #ifdef RTOS
 	for (volatile TaskHandle& h : dev.txTaskWaiting) { h = nullptr; }
 	for (volatile TaskHandle& h : dev.rxTaskWaiting) { h = nullptr; }
 	dev.rxBuffersWaiting = 0;
-	dev.txBuffersWaiting = 0;
 #endif
 
 	dev.UpdateLocalCanTiming(timing);									// sets NBTP and DBTP
@@ -508,16 +506,34 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 		bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
 		if (!bufferFree && timeout != 0)
 		{
-			TaskBase::ClearNotifyCount();
+			const unsigned int bufferIndex = READBITS(hw, TXFQS, TFQPI);
+			const uint32_t trigMask = (uint32_t)1 << bufferIndex;
+
 			txTaskWaiting[(unsigned int)whichBuffer] = TaskBase::GetCallerTaskHandle();
-			txBuffersWaiting |= 1u << (unsigned int)whichBuffer;
-			bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
-			if (!bufferFree)
+
 			{
-				TaskBase::Take(timeout);
-				bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
+				AtomicCriticalSectionLocker lock;
+				hw->REG(TXBTIE) |= trigMask;
 			}
-			txBuffersWaiting &= ~(1u << (unsigned int)whichBuffer);
+
+			bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
+			// In the following, when we call TaskBase::Take() the Move task sometimes gets woken up early by by the DDA ring
+			// Therefore we loop calling Take() until either the call times out or the buffer is free
+			while (!bufferFree)
+			{
+				const bool timedOut = !TaskBase::Take(timeout);
+				bufferFree = (READBITS(hw, TXFQS, TFQF) == 0);
+				if (timedOut)
+				{
+					break;
+				}
+			}
+			txTaskWaiting[(unsigned int)whichBuffer] = nullptr;
+
+			{
+				AtomicCriticalSectionLocker lock;
+				hw->REG(TXBTIE) &= ~trigMask;
+			}
 		}
 #else
 		do
@@ -534,18 +550,29 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 		bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
 		if (!bufferFree && timeout != 0)
 		{
-			TaskBase::ClearNotifyCount();
 			txTaskWaiting[(unsigned int)whichBuffer] = TaskBase::GetCallerTaskHandle();
-			txBuffersWaiting |= 1u << (unsigned int)whichBuffer;
-			hw->REG(TXBTIE) |= trigMask;
-			bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
-			if (!bufferFree)
 			{
-				TaskBase::Take(timeout);
-				bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
+				AtomicCriticalSectionLocker lock;
+				hw->REG(TXBTIE) |= trigMask;
 			}
-			txBuffersWaiting &= ~(1u << (unsigned int)whichBuffer);
-			hw->REG(TXBTIE) &= ~trigMask;
+			bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
+
+			// In the following, when we call TaskBase::Take() assume that the task may get woken up early
+			// Therefore we loop calling Take() until either the call times out or the buffer is free
+			while (!bufferFree)
+			{
+				const bool timedOut = !TaskBase::Take(timeout);
+				bufferFree = (hw->REG(TXBRP) & trigMask) == 0;
+				if (timedOut)
+				{
+					break;
+				}
+			}
+			txTaskWaiting[(unsigned int)whichBuffer] = nullptr;
+			{
+				AtomicCriticalSectionLocker lock;
+				hw->REG(TXBTIE) &= ~trigMask;
+			}
 		}
 #else
 		do
@@ -556,6 +583,22 @@ bool CanDevice::IsSpaceAvailable(TxBufferNumber whichBuffer, uint32_t timeout) n
 	}
 	return bufferFree;
 }
+
+#if 0	// not currently used
+
+// Return the number of messages waiting to be sent in the transmit FIFO
+unsigned int CanDevice::NumTxMessagesPending(TxBufferNumber whichBuffer) noexcept
+{
+	if (whichBuffer == TxBufferNumber::fifo)
+	{
+		return READBITS(hw, TXBC, TFQS) - READBITS(hw, TXFQS, TFFL);
+	}
+
+	const unsigned int bufferIndex = (unsigned int)whichBuffer - (unsigned int)TxBufferNumber::buffer0;
+	return (hw->REG(TXBRP) >> bufferIndex) & 1u;
+}
+
+#endif
 
 void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBufferHeader *f) noexcept
 {
@@ -631,19 +674,20 @@ void CanDevice::CopyMessageForTransmit(CanMessageBuffer *buffer, volatile TxBuff
 
 // Queue a message for sending via a buffer or FIFO. If the buffer isn't free, cancel the previous message (or oldest message in the fifo) and send it anyway.
 // On return the caller must free or re-use the buffer.
-void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
+uint32_t CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMessageBuffer *buffer) noexcept
 {
+	uint32_t cancelledId = 0;
 	if ((uint32_t)whichBuffer < (uint32_t)TxBufferNumber::buffer0 + config->numTxBuffers)
 	{
 		const bool bufferFree = IsSpaceAvailable(whichBuffer, timeout);
 		const uint32_t bufferIndex = (whichBuffer == TxBufferNumber::fifo)
-										? (hw->REG(TXFQS) & CAN_(TXFQS_TFQPI_Msk)) >> CAN_(TXFQS_TFQPI_Pos)
+										? READBITS(hw, TXFQS, TFQPI)
 											: (uint32_t)whichBuffer - (uint32_t)TxBufferNumber::buffer0;
 		const uint32_t trigMask = (uint32_t)1 << bufferIndex;
 		if (!bufferFree)
 		{
 			// Retrieve details of the packet we are about to cancel
-			lastCancelledId = GetTxBuffer(bufferIndex)->T0.bit.ID;
+			cancelledId = GetTxBuffer(bufferIndex)->T0.bit.ID;
 			// Cancel transmission of the oldest packet
 			hw->REG(TXBCR) = trigMask;
 			do
@@ -651,13 +695,13 @@ void CanDevice::SendMessage(TxBufferNumber whichBuffer, uint32_t timeout, CanMes
 				delay(1);
 			}
 			while ((hw->REG(TXBRP) & trigMask) != 0 || (whichBuffer == TxBufferNumber::fifo && READBITS(hw, TXFQS, TFQF)));
-			++txTimeouts;
 		}
 
 		CopyMessageForTransmit(buffer, GetTxBuffer(bufferIndex));
 		__DSB();								// this is needed on the SAME70, otherwise incorrect data sometimes gets transmitted
 		hw->REG(TXBAR) = trigMask;
 	}
+	return cancelledId;
 }
 
 void CanDevice::CopyReceivedMessage(CanMessageBuffer *buffer, const volatile RxBufferHeader *f) noexcept
@@ -748,9 +792,8 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				TaskBase::ClearNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				rxBuffersWaiting |= 1u << waitingIndex;
 				const bool success = (READBITS(hw, RXF0S, F0FL) != 0) || (TaskBase::Take(timeout), READBITS(hw, RXF0S, F0FL) != 0);
-				rxBuffersWaiting &= ~(1u << waitingIndex);
+				rxTaskWaiting[waitingIndex] = nullptr;
 				if (!success)
 				{
 					return false;
@@ -766,7 +809,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			}
 #endif
 			// Process the received message into the buffer
-			const uint32_t getIndex = (hw->REG(RXF0S) & CAN_(RXF0S_F0GI_Msk)) >> CAN_(RXF0S_F0GI_Pos);
+			const uint32_t getIndex = READBITS(hw, RXF0S, F0GI);
 			CopyReceivedMessage(buffer, GetRxFifo0Buffer(getIndex));
 
 			// Tell the hardware that we have taken the message
@@ -787,9 +830,8 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				TaskBase::ClearNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				rxBuffersWaiting |= 1u << waitingIndex;
 				const bool success = (READBITS(hw, RXF1S, F1FL) != 0) || (TaskBase::Take(timeout), READBITS(hw, RXF1S, F1FL) != 0);
-				rxBuffersWaiting &= ~(1u << waitingIndex);
+				rxTaskWaiting[waitingIndex] = nullptr;
 				if (!success)
 				{
 					return false;
@@ -805,7 +847,7 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 			}
 #endif
 			// Process the received message into the buffer
-			const uint32_t getIndex = (hw->REG(RXF1S) & CAN_(RXF1S_F1GI_Msk)) >> CAN_(RXF1S_F1GI_Pos);
+			const uint32_t getIndex = READBITS(hw, RXF1S, F1GI);
 			CopyReceivedMessage(buffer, GetRxFifo1Buffer(getIndex));
 
 			// Tell the hardware that we have taken the message
@@ -830,9 +872,10 @@ bool CanDevice::ReceiveMessage(RxBufferNumber whichBuffer, uint32_t timeout, Can
 				TaskBase::ClearNotifyCount();
 				const unsigned int waitingIndex = (unsigned int)whichBuffer;
 				rxTaskWaiting[waitingIndex] = TaskBase::GetCallerTaskHandle();
-				rxBuffersWaiting |= 1u << waitingIndex;
+				rxBuffersWaiting |= ndatMask;
 				const bool success = (hw->REG(NDAT1) & ndatMask) != 0 || (TaskBase::Take(timeout), (hw->REG(NDAT1) & ndatMask) != 0);
-				rxBuffersWaiting &= ~(1u << waitingIndex);
+				rxBuffersWaiting &= ~ndatMask;
+				rxTaskWaiting[waitingIndex] = nullptr;
 				if (!success)
 				{
 					return false;
@@ -997,8 +1040,7 @@ void CanDevice::UpdateLocalCanTiming(const CanTiming &timing) noexcept
 		| ((prescaler - 1) << CAN_(DBTP_DBRP_Pos));
 }
 
-void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rTxTimeouts,
-									unsigned int& rMessagesLost, unsigned int& rBusOffCount, uint32_t& rLastCancelledId) noexcept
+void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsigned int& rMessagesReceived, unsigned int& rMessagesLost, unsigned int& rBusOffCount) noexcept
 {
 	AtomicCriticalSectionLocker lock;
 
@@ -1006,10 +1048,7 @@ void CanDevice::GetAndClearStats(unsigned int& rMessagesQueuedForSending, unsign
 	rMessagesReceived = messagesReceived;
 	rMessagesLost = messagesLost;
 	rBusOffCount = busOffCount;
-	rTxTimeouts = txTimeouts;
-	rLastCancelledId = lastCancelledId;
-	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = txTimeouts = 0;
-	lastCancelledId = 0;
+	messagesQueuedForSending = messagesReceived = messagesLost = busOffCount = 0;
 }
 
 #ifdef RTOS
@@ -1022,33 +1061,29 @@ void CanDevice::Interrupt() noexcept
 		hw->REG(IR) = ir;
 
 		constexpr unsigned int rxFifo0WaitingIndex = (unsigned int)RxBufferNumber::fifo0;
-		if ((ir & CAN_(IR_RF0N)) && (rxBuffersWaiting & (1u << rxFifo0WaitingIndex)))
+		if ((ir & CAN_(IR_RF0N)) != 0)
 		{
 			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo0WaitingIndex]);
-			rxBuffersWaiting &= ~(1u << rxFifo0WaitingIndex);
 		}
 
 		constexpr unsigned int rxFifo1WaitingIndex = (unsigned int)RxBufferNumber::fifo1;
-		if ((ir & CAN_(IR_RF1N)) && (rxBuffersWaiting & (1u << rxFifo1WaitingIndex)))
+		if ((ir & CAN_(IR_RF1N)) != 0)
 		{
 			TaskBase::GiveFromISR(rxTaskWaiting[rxFifo1WaitingIndex]);
-			rxBuffersWaiting &= ~(1u << rxFifo1WaitingIndex);
 		}
 
 		if (ir & CAN_(IR_DRX))
 		{
 			// Check which receive buffers have new messages
-			if (config->numRxBuffers != 0)		// needed to avoid a compiler warning
+			uint32_t newData;
+			while (((newData = hw->REG(NDAT1)) & rxBuffersWaiting) != 0)
 			{
-				uint32_t newData;
-				while ((newData = hw->REG(NDAT1) & ((uint32_t)rxBuffersWaiting >> 2)) != 0)		// bottom 2 bits of rxBuffersWaiting are for the FIFOs
+				const unsigned int rxBufferNumber = LowestSetBit(newData);
+				rxBuffersWaiting &= ~((uint32_t)1 << rxBufferNumber);
+				const unsigned int waitingIndex = rxBufferNumber + (unsigned int)RxBufferNumber::buffer0;
+				if (waitingIndex < ARRAY_SIZE(rxTaskWaiting))
 				{
-					const unsigned int waitingIndex = LowestSetBit(newData) + (unsigned int)RxBufferNumber::buffer0;
-					if (waitingIndex < ARRAY_SIZE(rxTaskWaiting))
-					{
-						TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
-					}
-					rxBuffersWaiting &= ~(1u << waitingIndex);
+					TaskBase::GiveFromISR(rxTaskWaiting[waitingIndex]);
 				}
 			}
 		}
@@ -1061,20 +1096,20 @@ void CanDevice::Interrupt() noexcept
 			{
 				const unsigned int bufferNumber = LowestSetBit(transmitDone);
 				hw->REG(TXBTIE) &= ~((uint32_t)1 << bufferNumber);
-				const unsigned int waitingIndex = bufferNumber + (unsigned int)TxBufferNumber::buffer0;
-				if (waitingIndex < ARRAY_SIZE(txTaskWaiting) && (txBuffersWaiting & (1u <<waitingIndex)))
+				if (bufferNumber < READBITS(hw, TXBC, NDTB))
 				{
-					TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
-					txBuffersWaiting &= ~(1u << waitingIndex);
+					// Completed transmission from a dedicated transmit buffer
+					const unsigned int waitingIndex = bufferNumber + (unsigned int)TxBufferNumber::buffer0;
+					if (waitingIndex < ARRAY_SIZE(txTaskWaiting))
+					{
+						TaskBase::GiveFromISR(txTaskWaiting[waitingIndex]);
+					}
 				}
-			}
-
-			// Check the tx FIFO
-			constexpr unsigned int fifoWaitingIndex = (unsigned int)TxBufferNumber::fifo;
-			if ((txBuffersWaiting & (1u << fifoWaitingIndex)) && READBITS(hw, TXFQS, TFFL) != 0)
-			{
-				TaskBase::GiveFromISR(txTaskWaiting[fifoWaitingIndex]);
-				txBuffersWaiting &= ~(1u << fifoWaitingIndex);
+				else
+				{
+					// Completed transmission from a transmit FIFO buffer
+					TaskBase::GiveFromISR(txTaskWaiting[(unsigned int)TxBufferNumber::fifo]);
+				}
 			}
 		}
 
