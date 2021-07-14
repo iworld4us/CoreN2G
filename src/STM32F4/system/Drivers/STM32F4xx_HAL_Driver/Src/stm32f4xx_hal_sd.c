@@ -626,6 +626,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= errorstate;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -652,6 +653,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
         __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
         hsd->ErrorCode |= HAL_SD_ERROR_TIMEOUT;
         hsd->State= HAL_SD_STATE_READY;
+        hsd->Context = SD_CONTEXT_NONE;
         return HAL_TIMEOUT;
       }
     }
@@ -669,6 +671,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
           __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
           hsd->ErrorCode |= errorstate;
           hsd->State = HAL_SD_STATE_READY;
+          hsd->Context = SD_CONTEXT_NONE;
           return HAL_ERROR;
         }
       }
@@ -681,6 +684,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= HAL_SD_ERROR_DATA_TIMEOUT;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
     else if(__HAL_SD_GET_FLAG(hsd, SDIO_FLAG_DCRCFAIL))
@@ -689,6 +693,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= HAL_SD_ERROR_DATA_CRC_FAIL;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
     else if(__HAL_SD_GET_FLAG(hsd, SDIO_FLAG_RXOVERR))
@@ -697,6 +702,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= HAL_SD_ERROR_RX_OVERRUN;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -712,6 +718,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
         __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
         hsd->ErrorCode |= HAL_SD_ERROR_TIMEOUT;
         hsd->State= HAL_SD_STATE_READY;
+        hsd->Context = SD_CONTEXT_NONE;
         return HAL_ERROR;
       }
     }
@@ -720,6 +727,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint3
     __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
 
     hsd->State = HAL_SD_STATE_READY;
+    hsd->Context = SD_CONTEXT_NONE;
 
     return HAL_OK;
   }
@@ -808,6 +816,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= errorstate;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -843,6 +852,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint
         __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
         hsd->ErrorCode |= errorstate;
         hsd->State = HAL_SD_STATE_READY;
+        hsd->Context = SD_CONTEXT_NONE;
         return HAL_TIMEOUT;
       }
     }
@@ -860,6 +870,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint
           __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
           hsd->ErrorCode |= errorstate;
           hsd->State = HAL_SD_STATE_READY;
+          hsd->Context = SD_CONTEXT_NONE;
           return HAL_ERROR;
         }
       }
@@ -872,6 +883,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= HAL_SD_ERROR_DATA_TIMEOUT;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
     else if(__HAL_SD_GET_FLAG(hsd, SDIO_FLAG_DCRCFAIL))
@@ -880,6 +892,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= HAL_SD_ERROR_DATA_CRC_FAIL;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
     else if(__HAL_SD_GET_FLAG(hsd, SDIO_FLAG_TXUNDERR))
@@ -888,6 +901,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= HAL_SD_ERROR_TX_UNDERRUN;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -895,6 +909,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint
     __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
 
     hsd->State = HAL_SD_STATE_READY;
+    hsd->Context = SD_CONTEXT_NONE;
 
     return HAL_OK;
   }
@@ -999,6 +1014,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks_IT(SD_HandleTypeDef *hsd, uint8_t *pData, ui
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= errorstate;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -1096,6 +1112,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_IT(SD_HandleTypeDef *hsd, uint8_t *pData, u
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= errorstate;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -1222,6 +1239,7 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, u
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= errorstate;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -1325,6 +1343,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
       hsd->ErrorCode |= errorstate;
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       return HAL_ERROR;
     }
 
@@ -1333,7 +1352,6 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
 
     /* Enable the DMA Channel */
     HAL_DMA_Start_IT(hsd->hdmatx, (uint32_t)pData, (uint32_t)&hsd->Instance->FIFO, (uint32_t)(BLOCKSIZE * NumberOfBlocks)/4);
-
     /* Configure the SD DPSM (Data Path State Machine) */
     config.DataTimeOut   = SDMMC_DATATIMEOUT;
     config.DataLength    = BLOCKSIZE * NumberOfBlocks;
@@ -1497,6 +1515,7 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
       __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
 
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       if(((hsd->Context & SD_CONTEXT_READ_SINGLE_BLOCK) != RESET) || ((hsd->Context & SD_CONTEXT_READ_MULTIPLE_BLOCK) != RESET))
       {
 #if (USE_HAL_SD_REGISTER_CALLBACKS == 1)
@@ -1533,7 +1552,7 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
       {
         /* Disable the DMA transfer for transmit request by setting the DMAEN bit
         in the SD DCTRL register */
-        hsd->Instance->DCTRL &= (uint32_t)~((uint32_t)SDIO_DCTRL_DMAEN);
+        hsd->Instance->DCTRL &= (uint32_t)~(((uint32_t)SDIO_DCTRL_DMAEN | (uint32_t)SDIO_DCTRL_DTEN));
 
         hsd->State = HAL_SD_STATE_READY;
 
@@ -1619,6 +1638,7 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
       {
         hsd->ErrorCode = HAL_SD_ERROR_NONE;
         hsd->State = HAL_SD_STATE_READY;
+        hsd->Context = SD_CONTEXT_NONE;
 #if (USE_HAL_SD_REGISTER_CALLBACKS == 1)
         hsd->AbortCpltCallback(hsd);
 #else
@@ -1692,6 +1712,7 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
       {
         hsd->ErrorCode = HAL_SD_ERROR_NONE;
         hsd->State = HAL_SD_STATE_READY;
+        hsd->Context = SD_CONTEXT_NONE;
         HAL_SD_AbortCallback(hsd);
       }
     }
@@ -1699,6 +1720,7 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
     {
       /* Set the SD state to ready to be able to start again the process */
       hsd->State = HAL_SD_STATE_READY;
+      hsd->Context = SD_CONTEXT_NONE;
       HAL_SD_ErrorCallback(hsd);
     }
   }
@@ -2452,6 +2474,7 @@ HAL_StatusTypeDef HAL_SD_Abort(SD_HandleTypeDef *hsd)
   }
 
   hsd->State = HAL_SD_STATE_READY;
+  hsd->Context = SD_CONTEXT_NONE;
   CardState = HAL_SD_GetCardState(hsd);
   if((CardState == HAL_SD_CARD_RECEIVING) || (CardState == HAL_SD_CARD_SENDING))
   {
@@ -2511,6 +2534,7 @@ HAL_StatusTypeDef HAL_SD_Abort_IT(SD_HandleTypeDef *hsd)
   {
     CardState = HAL_SD_GetCardState(hsd);
     hsd->State = HAL_SD_STATE_READY;
+    hsd->Context = SD_CONTEXT_NONE;
     if((CardState == HAL_SD_CARD_RECEIVING) || (CardState == HAL_SD_CARD_SENDING))
     {
       hsd->ErrorCode = SDMMC_CmdStopTransfer(hsd->Instance);
@@ -2583,9 +2607,9 @@ static void SD_DMAReceiveCplt(DMA_HandleTypeDef *hdma)
     }
   }
 
-  /* Disable the DMA transfer for transmit request by setting the DMAEN bit
-  in the SD DCTRL register */
-  hsd->Instance->DCTRL &= (uint32_t)~((uint32_t)SDIO_DCTRL_DMAEN);
+  /* Disable the DMA transfer for transmit request by clearing the DMAEN bit
+  in the SD DCTRL register. Ensure that we do not timeout by clearing the enable bit*/
+  hsd->Instance->DCTRL &= (uint32_t)~(((uint32_t)SDIO_DCTRL_DMAEN | (uint32_t)SDIO_DCTRL_DTEN));
   // Sometimes a read operation can complete so fast that the command
   // status has not yet been read. This then gives a read timeout
   // See: https://community.st.com/s/question/0D50X00009XkeZ4SAJ/stm32l4-sdmmc-command-timeout
@@ -2613,7 +2637,16 @@ static void SD_DMAReceiveCplt(DMA_HandleTypeDef *hdma)
   __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
 #endif
   hsd->State = HAL_SD_STATE_READY;
-
+  hsd->Context = SD_CONTEXT_NONE;
+#if 0
+#ifdef SDIO_STA_STBITERR
+    __HAL_SD_DISABLE_IT(hsd, SDIO_IT_DATAEND | SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT|\
+                             SDIO_IT_TXUNDERR| SDIO_IT_RXOVERR | SDIO_IT_STBITERR);
+#else /* SDIO_STA_STBITERR not defined */
+    __HAL_SD_DISABLE_IT(hsd, SDIO_IT_DATAEND | SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT|\
+                             SDIO_IT_TXUNDERR| SDIO_IT_RXOVERR);
+#endif
+#endif
 #if (USE_HAL_SD_REGISTER_CALLBACKS == 1)
   hsd->RxCpltCallback(hsd);
 #else
@@ -2648,6 +2681,7 @@ static void SD_DMAError(DMA_HandleTypeDef *hdma)
     }
 
     hsd->State= HAL_SD_STATE_READY;
+    hsd->Context = SD_CONTEXT_NONE;
   }
 
 #if (USE_HAL_SD_REGISTER_CALLBACKS == 1)
@@ -2678,6 +2712,7 @@ static void SD_DMATxAbort(DMA_HandleTypeDef *hdma)
     CardState = HAL_SD_GetCardState(hsd);
     hsd->ErrorCode = HAL_SD_ERROR_NONE;
     hsd->State = HAL_SD_STATE_READY;
+    hsd->Context = SD_CONTEXT_NONE;
     if((CardState == HAL_SD_CARD_RECEIVING) || (CardState == HAL_SD_CARD_SENDING))
     {
       hsd->ErrorCode |= SDMMC_CmdStopTransfer(hsd->Instance);
@@ -2723,6 +2758,7 @@ static void SD_DMARxAbort(DMA_HandleTypeDef *hdma)
     CardState = HAL_SD_GetCardState(hsd);
     hsd->ErrorCode = HAL_SD_ERROR_NONE;
     hsd->State = HAL_SD_STATE_READY;
+    hsd->Context = SD_CONTEXT_NONE;
     if((CardState == HAL_SD_CARD_RECEIVING) || (CardState == HAL_SD_CARD_SENDING))
     {
       hsd->ErrorCode |= SDMMC_CmdStopTransfer(hsd->Instance);
