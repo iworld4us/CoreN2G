@@ -8,7 +8,7 @@ extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf
 HardwareTimer SPWMTimer(SPWM_TIMER);
 
 // Minimum period between interrupts - in microseconds (to prevent starving other tasks)
-static constexpr uint32_t MinimumInterruptDeltaUS = 50;
+static constexpr uint32_t MinimumInterruptDeltaUS = 20;
 
 typedef struct {
     uint32_t nextEvent;
