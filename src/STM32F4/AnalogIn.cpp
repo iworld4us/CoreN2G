@@ -26,7 +26,7 @@ constexpr uint32_t NumADCs = 3;                          // Max supported ADCs
 constexpr uint32_t OversampleBits = 2;                   // Number of extra bit of resolution
 constexpr uint32_t Oversample = 16;                      // 4^OversampleBits
 constexpr uint32_t MaxActiveChannels = 16;               // Max active ADC channels
-constexpr uint32_t NumChannelsADC1 = ADC_CHANNEL_VREFINT+1;
+constexpr uint32_t NumChannelsADC1 = ADC_CHANNEL_VREFINT+2;
 constexpr uint32_t NumChannelsADC3 = 16;
 constexpr AnalogChannelNumber ADC_1 = 0x10000;
 constexpr AnalogChannelNumber ADC_2 = 0x20000;
@@ -387,7 +387,10 @@ static uint32_t AddActiveChannels(ADC_HandleTypeDef& AdcHandle, int32_t *cm, uin
         if (cm[i] != -1)
         {
             // include this channel
-            AdcChannelConf.Channel = i;
+            if (i == (ADC_CHANNEL_TEMPSENSOR & 0xffff))
+                AdcChannelConf.Channel = ADC_CHANNEL_TEMPSENSOR;
+            else
+                AdcChannelConf.Channel = i;
             AdcChannelConf.Rank = ++sampleOffset;
             HAL_ADC_ConfigChannel(&AdcHandle, &AdcChannelConf);
             // record the location of the sample
@@ -541,7 +544,7 @@ namespace LegacyAnalogIn
     // Get the temperature measurement channel
     AnalogChannelNumber GetTemperatureAdcChannel()
     {
-        return (ADC_1 | ADC_CHANNEL_TEMPSENSOR);
+        return (ADC_1 | (ADC_CHANNEL_TEMPSENSOR & 0xffff));
     }
 
     // Get the temperature measurement channel
