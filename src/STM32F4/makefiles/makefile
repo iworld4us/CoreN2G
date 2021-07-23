@@ -9,7 +9,7 @@ CORESTM_DIR ?= ./CoreN2G
 
 BUILD ?= Debug
 
-NETWORK ?= ESP8266WIFI
+NETWORK ?= WIFI
 
 TMC22XX ?= true
 TMC51XX ?= true
@@ -63,6 +63,7 @@ $(info  - Linker Script used: $(LINKER_SCRIPT))
 #Flags common for Core in c and c++
 #FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DENABLE_UART3 -DSTM32F4 -DSTM32F407xx -DSTM32F40_41xxx -DSTM32F407_5ZX -DSTM32F4xx
 FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DSTM32F4 -DSTM32F407xx -DSTM32F40_41xxx -DSTM32F407_5ZX -DSTM32F4xx
+#FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DSTM32F4 -DSTM32F429xx -DSTM32F40_41xxx -DSTM32F407_5ZX -DSTM32F4xx
 # UART configuration
 FLAGS  += -DHAVE_HWSERIAL1 -DHAVE_HWSERIAL2 -DHAVE_HWSERIAL3 -DHAVE_HWSERIAL4 -DHAVE_HWSERIAL5 -DHAVE_HWSERIAL6
 
@@ -81,8 +82,8 @@ FLAGS += -MMD -MP
 ifeq ($(NETWORK), ETHERNET)
         $(info  - Networking: Ethernet)
         FLAGS += -DLPC_NETWORKING
-else ifeq ($(NETWORK), ESP8266WIFI)
-        $(info  - Networking: ESP8266 WIFI) 
+else ifeq ($(NETWORK), WIFI)
+        $(info  - Networking: ESP WIFI) 
         FLAGS += -DESP8266WIFI
 else ifeq ($(NETWORK), SBC)
         $(info  - SBC Interface Enabled)
