@@ -255,8 +255,8 @@ extern "C" uint32_t DelayCycles(uint32_t start, uint32_t cycles) noexcept
 void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 {
 #if SAME5x || SAMC21
-	const uint8_t port = p >> 5;
-	const uint8_t pin  = p & 0x1F;
+	const uint8_t port = GpioPortNumber(p);
+	const uint8_t pin  = GpioPinNumber(p);
 	uint8_t tmp = PORT->Group[port].PMUX[pin >> 1].reg;
 	if (pin & 1)
 	{
@@ -310,7 +310,7 @@ void SetPinFunction(Pin p, GpioPinFunction f) noexcept
 void ClearPinFunction(Pin p) noexcept
 {
 #if SAME5x || SAMC21
-	PORT->Group[p >> 5].PINCFG[p & 0x1F].bit.PMUXEN = 0;
+	PORT->Group[GpioPortNumber(p)].PINCFG[GpioPinNumber(p)].bit.PMUXEN = 0;
 #elif SAME70 || SAM4E || SAM4S
 	Pio * const p_pio = GpioPort(p);
 	const uint32_t mask = GpioMask(p);
@@ -328,7 +328,7 @@ void EnablePullup(Pin pin) noexcept
 	GpioPort(pin)->PIO_PUER = GpioMask(pin);						// turn on pullup
 #else
 	PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
-	PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg |= PORT_PINCFG_PULLEN;
+	PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 1;
 #endif
 }
 
@@ -339,11 +339,12 @@ void DisablePullup(Pin pin) noexcept
 	GpioPort(pin)->PIO_PUDR = GpioMask(pin);						// turn off pullup
 	GpioPort(pin)->PIO_PPDDR = GpioMask(pin);						// turn off pulldown
 #else
-	PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg &= ~PORT_PINCFG_PULLEN;
+	PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].bit.PULLEN = 0;
 #endif
 }
 
 // IoPort::SetPinMode calls this
+// Warning! Changing pin mode will reset the output drive strength to normal.
 void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcept
 {
 #if SAM4E || SAM4S || SAME70
@@ -373,9 +374,7 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | (GpioMask(pin) & 0xffff);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_HWSEL | PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | ((GpioMask(pin) & 0xffff0000) >> 16);
-			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg &= ~PORT_PINCFG_PULLEN;
+			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
 #endif
 			break;
 
@@ -392,10 +391,8 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | (GpioMask(pin) & 0xffff);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_HWSEL | PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | ((GpioMask(pin) & 0xffff0000) >> 16);
 			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg |= PORT_PINCFG_PULLEN;
+			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_INEN;
 #endif
 			break;
 
@@ -413,10 +410,8 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			ClearPinFunction(pin);
 			// The direction must be set before the pullup, otherwise setting the pullup doesn't work
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | (GpioMask(pin) & 0xffff);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_HWSEL | PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | ((GpioMask(pin) & 0xffff0000) >> 16);
 			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg |= PORT_PINCFG_PULLEN;
+			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_INEN;
 #endif
 			break;
 
@@ -432,8 +427,7 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			ClearPinFunction(pin);
 			PORT->Group[GpioPortNumber(pin)].OUTCLR.reg = GpioMask(pin);
 			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | (GpioMask(pin) & 0xffff);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_HWSEL | PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | ((GpioMask(pin) & 0xffff0000) >> 16);
+			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
 #endif
 			break;
 
@@ -449,8 +443,7 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			ClearPinFunction(pin);
 			PORT->Group[GpioPortNumber(pin)].OUTSET.reg = GpioMask(pin);
 			PORT->Group[GpioPortNumber(pin)].DIRSET.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | (GpioMask(pin) & 0xffff);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_HWSEL | PORT_WRCONFIG_WRPINCFG | PORT_WRCONFIG_INEN | ((GpioMask(pin) & 0xffff0000) >> 16);
+			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = PORT_PINCFG_INEN;
 #endif
 			break;
 
@@ -462,10 +455,8 @@ void SetPinMode(Pin pin, enum PinMode mode, uint32_t debounceCutoff = 0) noexcep
 			// Ideally we should record which pins are being used as analog inputs, then we can disable the clock
 			// on any PIO that is being used solely for outputs and ADC inputs. But for now we don't do that.
 #else
-			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg &= ~PORT_PINCFG_PULLEN;
 			PORT->Group[GpioPortNumber(pin)].DIRCLR.reg = GpioMask(pin);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_WRPINCFG | (GpioMask(pin) & 0xffff);
-			PORT->Group[GpioPortNumber(pin)].WRCONFIG.reg = PORT_WRCONFIG_HWSEL | PORT_WRCONFIG_WRPINCFG | ((GpioMask(pin) & 0xffff0000) >> 16);
+			PORT->Group[GpioPortNumber(pin)].PINCFG[GpioPinNumber(pin)].reg = 0;
 			SetPinFunction(pin, GpioPinFunction::B);						// ADC is always on peripheral B for the SAMC21 and SAME5x
 #endif
 			break;
