@@ -4,8 +4,8 @@
 
 **  File        : LinkerScript.ld
 **
-**  Abstract    : Linker script for STM32F407ZGTx Device with
-**                1024KByte FLASH, 128KByte RAM
+**  Abstract    : Linker script for STM32F446ZETx Device with
+**                512KByte FLASH, 128KByte RAM
 **
 **                Set heap size, stack size and stack location according
 **                to application requirements.
@@ -65,7 +65,7 @@ MEMORY
 {
 /*VECTOR (rx) : ORIGIN = 0x8008000, LENGTH = 16K*/
 /*RESETDATA (rx) : ORIGIN = 0x800C000, LENGTH = 16K*/
-FLASH (rx)      : ORIGIN = 0x8008000, LENGTH = 1024K - 32K
+FLASH (rx)      : ORIGIN = 0x8008000, LENGTH = 512K - 32K
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
 /*CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 64K*/
 }

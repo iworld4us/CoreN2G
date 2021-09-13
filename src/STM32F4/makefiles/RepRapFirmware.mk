@@ -14,7 +14,7 @@ RRF_SRC_DIRS += targets/STM32/Hardware
 #networking support?
 ifeq ($(NETWORK), ETHERNET)
 	$(info Ethernet is not supported on STM32F4:)
-else ifeq ($(NETWORK), WIFI) 
+else ifeq ($(NETWORK), ESP8266WIFI) 
 	RRF_SRC_DIRS += Networking Networking/ESP8266WiFi targets/STM32/Networking/ESP8266WiFi
 else ifeq ($(NETWORK), SBC)
 	RRF_SRC_DIRS += Linux
@@ -47,7 +47,7 @@ RRF_INCLUDES += -I$(RRF_SRC_BASE)/Libraries/
 RRF_INCLUDES += -I$(RRF_SRC_BASE)/targets/
 
 #If building ESP8266 WIFI we only need to add the include from DuetWifiSocketServer as it has a file needed to compile RRF 
-ifeq ($(NETWORK), WIFI)
+ifeq ($(NETWORK), ESP8266WIFI)
 	RRF_INCLUDES += -IDuetWiFiSocketServer/src/include
 endif
 

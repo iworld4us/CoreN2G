@@ -8,7 +8,7 @@ extern "C" void debugPrintf(const char* fmt, ...) __attribute__ ((format (printf
 HardwareTimer SPWMTimer(SPWM_TIMER);
 
 // Minimum period between interrupts - in microseconds (to prevent starving other tasks)
-static constexpr uint32_t MinimumInterruptDeltaUS = 20;
+static constexpr uint32_t MinimumInterruptDeltaUS = 50;
 
 typedef struct {
     uint32_t nextEvent;
@@ -29,7 +29,7 @@ static bool timerReady = false;
 static TIM_HandleTypeDef *timerHandle;
 
 static SoftwarePWM PWMChans[MaxPWMChannels];
-#define LPC_DEBUG
+
 #ifdef LPC_DEBUG
 uint32_t pwmInts = 0;
 uint32_t pwmCalls = 0;
@@ -39,8 +39,6 @@ uint32_t pwmAdjust = 0;
 uint32_t pwmBad = 0;
 uint32_t pwmBigDelta = 0;
 uint32_t pwmVBigDelta = 0;
-uint32_t pwmBadRange = 0;
-int pwmBadVal = 0;
 #endif
 
 static void updateActive()
@@ -67,9 +65,8 @@ static void updateActive()
     }
     else
     {
+        startActive = endActive = -1;
         SPWMTimer.pause();
-        endActive = -1;
-        startActive = -1;
         //debugPrintf("Pause timer\n");
     }
 }
@@ -149,15 +146,6 @@ void TIM7_IRQHandler(void) noexcept
     uint32_t now = baseTime + baseDelta;
     baseTime = now;
     for(int i = startActive; i < endActive; i++)
-    {
-#ifdef LPC_DEBUG
-        if (i < 0 || i >= (int)MaxPWMChannels)
-        {
-            pwmBadRange++;
-            pwmBadVal = i;
-            break;
-        }
-#endif
         if (States[i].enabled)
         {
             PWMState& s = States[i];
@@ -206,7 +194,6 @@ void TIM7_IRQHandler(void) noexcept
             if ((uint32_t)delta < next)
                 next = (uint32_t)delta;
         }
-    }
     // setup the timer for the nearest event time
     if (next < MinimumInterruptDeltaUS)
     {
@@ -251,7 +238,7 @@ static void initTimer() noexcept
 #ifdef LPC_DEBUG
 void SPWMDiagnostics()
 {
-    debugPrintf("Ints: %u; Calls %u; fast: %uuS; slow %uuS adj %u bad %u big delta %u vbd %u range %u badval %d\n", (unsigned)pwmInts, (unsigned)pwmCalls, (unsigned)pwmMinTime, (unsigned)pwmMaxTime, (unsigned)pwmAdjust, (unsigned)pwmBad, (unsigned)pwmBigDelta, (unsigned)pwmVBigDelta, (unsigned)pwmBadRange, pwmBadVal);
+    debugPrintf("Ints: %u; Calls %u; fast: %uuS; slow %uuS adj %u bad %u big delta %u vbd %u\n", (unsigned)pwmInts, (unsigned)pwmCalls, (unsigned)pwmMinTime, (unsigned)pwmMaxTime, (unsigned)pwmAdjust, (unsigned)pwmBad, (unsigned)pwmBigDelta, (unsigned)pwmVBigDelta);
     pwmMinTime = UINT32_MAX;
     pwmMaxTime = 0;
     pwmInts = 0;
@@ -259,7 +246,6 @@ void SPWMDiagnostics()
     pwmAdjust = 0;
     pwmBad = 0;
     pwmBigDelta = 0;
-    pwmBadRange = 0;
 }
 #endif
 

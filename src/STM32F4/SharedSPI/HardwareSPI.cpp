@@ -211,9 +211,8 @@ void HardwareSPI::startTransfer(const uint8_t *tx_data, uint8_t *rx_data, size_t
 {
     // FIXME using DMA for a small number of bytes is probably a very bad idea, there is a lot of setup
     // consider turning off meminc when rx_data or tx_data is null so we don't need to memset buffers to 0xff for the sd card.
-    // consider setting dma burst size to 4 for WiFi and SBC transfers
+    // consider setting dms burst size to 4 for WiFi and SBC transfers
     HAL_SPI_StateTypeDef state = HAL_SPI_GetState(&(spi.handle));
-    if (transferActive) debugPrintf("Warning attempt to start a DMA transfer when one already active\n");
     if (state != HAL_SPI_STATE_READY)
     {
         debugPrintf("SPI not ready %x\n", state);
@@ -273,7 +272,7 @@ void HardwareSPI::startTransferAndWait(const uint8_t *tx_data, uint8_t *rx_data,
         status = HAL_SPI_TransmitReceive(&(spi.handle), rx_data, rx_data, len, SPITimeoutMillis);
     else
         status = HAL_SPI_TransmitReceive(&(spi.handle), (uint8_t *)tx_data, rx_data, len, SPITimeoutMillis);
-    transferActive = false;
+    transferActive = true;
     if (status != HAL_OK)
         debugPrintf("SPI Error %d\n", (int)status);
 }

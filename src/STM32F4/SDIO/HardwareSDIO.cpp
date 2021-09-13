@@ -64,7 +64,7 @@ void HardwareSDIO::initDmaStream(DMA_HandleTypeDef& hdma, DMA_Stream_TypeDef *in
     debugPrintf("SDIO Failed to init DMA\n");
     delay(5000);
   }
-  NVIC_EnableIRQ(irq);      
+  NVIC_EnableIRQ(irq);
 }
 
 uint8_t HardwareSDIO::tryInit(bool highspeed) noexcept
@@ -110,6 +110,8 @@ uint8_t HardwareSDIO::Init(void) noexcept
   pinmap_pinout(PC_11, PinMap_SD);
   pinmap_pinout(PC_12, PinMap_SD);
   pinmap_pinout(PD_2, PinMap_SD);
+
+  NVIC_EnableIRQ(SDIO_IRQn);
   // DMA setup
   __HAL_RCC_DMA2_CLK_ENABLE();
   initDmaStream(dmaRx, DMA2_Stream3, DMA_CHANNEL_4, DMA2_Stream3_IRQn, DMA_PERIPH_TO_MEMORY, DMA_MINC_ENABLE);

@@ -76,7 +76,7 @@ defined in linker script */
   .type  Reset_Handler, %function
 Reset_Handler:
   ldr   sp, =_estack     /* set stack pointer */
-  cpsid if               /* ensure interrupts are off during startup */
+
 /* Copy the data segment initializers from flash to SRAM */
   movs  r1, #0
   b  LoopCopyDataInit
