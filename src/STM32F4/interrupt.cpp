@@ -43,6 +43,7 @@
 
 /*As we can have only one interrupt/pin id, don't need to get the port info*/
 typedef struct {
+  GPIO_TypeDef *port;
   IRQn_Type irqnb;
   StandardCallbackFunction callback;
   CallbackParameter param;
@@ -166,7 +167,7 @@ bool stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, StandardCallbackFu
 
   gpio_irq_conf[id].callback = callback;
   gpio_irq_conf[id].param = param;
-
+  gpio_irq_conf[id].port = port;
   // Enable and set EXTI Interrupt
   //HAL_NVIC_SetPriority(gpio_irq_conf[id].irqnb, EXTI_IRQ_PRIO, EXTI_IRQ_SUBPRIO);
   HAL_NVIC_EnableIRQ(gpio_irq_conf[id].irqnb);
@@ -198,8 +199,9 @@ void stm32_interrupt_enable(GPIO_TypeDef *port, uint16_t pin, void (*callback)(v
   */
 void stm32_interrupt_disable(GPIO_TypeDef *port, uint16_t pin)
 {
-  UNUSED(port);
   uint8_t id = get_pin_id(pin);
+  // don't disable unless it is actually for this port/pin
+  if (gpio_irq_conf[id].port != port) return;
   gpio_irq_conf[id].callback = NULL;
 
   for (int i = 0; i < NB_EXTI; i++) {

@@ -9,7 +9,7 @@ CORESTM_DIR ?= ./CoreN2G
 
 BUILD ?= Debug
 
-NETWORK ?= ESP8266WIFI
+NETWORK ?= WIFI
 
 TMC22XX ?= true
 TMC51XX ?= true
@@ -51,7 +51,7 @@ endif
 	
 
 #Linker script to avoid built in Bootloader
-LINKER_SCRIPT_BASE = $(CORE_DIR)/src/STM32F4/variants/STM32F446/ldscript
+LINKER_SCRIPT_BASE = $(CORE_DIR)/src/STM32F4/variants/STM32F407/ldscript
 
 
 
@@ -61,15 +61,16 @@ $(info  - Linker Script used: $(LINKER_SCRIPT))
 
 
 #Flags common for Core in c and c++
-#FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DENABLE_UART3 -DSTM32F4 -DSTM32F446xx -DSTM32F40_41xxx -DSTM32F446_5ZX -DSTM32F4xx
-FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DSTM32F4 -DSTM32F446xx -DSTM32F40_41xxx -DSTM32F446_5ZX -DSTM32F4xx
+#FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DENABLE_UART3 -DSTM32F4 -DSTM32F407xx -DSTM32F40_41xxx -DSTM32F407_5ZX -DSTM32F4xx
+FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DSTM32F4 -DSTM32F407xx -DSTM32F40_41xxx -DSTM32F407_5ZX -DSTM32F4xx
+#FLAGS  = -D__$(PROCESSOR)__ -D_XOPEN_SOURCE -DSTM32F4 -DSTM32F429xx -DSTM32F40_41xxx -DSTM32F407_5ZX -DSTM32F4xx
 # UART configuration
-FLAGS  += -DHAVE_HWSERIAL1 -DHAVE_HWSERIAL3
+FLAGS  += -DHAVE_HWSERIAL1 -DHAVE_HWSERIAL2 -DHAVE_HWSERIAL3 -DHAVE_HWSERIAL4 -DHAVE_HWSERIAL5 -DHAVE_HWSERIAL6
 
 #lpcopen Defines
 FLAGS += -DCORE_M4
 #RTOS + enable mods to RTOS+TCP for RRF
-FLAGS += -DRTOS -DFREERTOS_USED -DUSBCON -DUSBD_USE_CDC -DUSBD_VID=0x0483 -DTIM_IRQ_PRIO=13 -DUSB_PRODUCT=\"STM32F446ZG\" -DVECT_TAB_OFFSET=0x8000 -DHSE_VALUE=12000000
+FLAGS += -DRTOS -DFREERTOS_USED -DUSBCON -DUSBD_USE_CDC -DUSBD_VID=0x0483 -DTIM_IRQ_PRIO=13 -DUSB_PRODUCT=\"STM32F407ZG\" -DVECT_TAB_OFFSET=0x8000
 FLAGS += -DDEVICE_USBDEVICE=1 -DTARGET_STM32F4 -DARDUINO_ARCH_STM32 -DHAL_UART_MODULE_ENABLED -DHAL_PCD_MODULE_ENABLED
 FLAGS +=  -Wall -c -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mcpu=cortex-m4 -mthumb -ffunction-sections -fdata-sections
 FLAGS += -nostdlib -Wdouble-promotion -fsingle-precision-constant -fstack-usage
@@ -81,8 +82,8 @@ FLAGS += -MMD -MP
 ifeq ($(NETWORK), ETHERNET)
         $(info  - Networking: Ethernet)
         FLAGS += -DLPC_NETWORKING
-else ifeq ($(NETWORK), ESP8266WIFI)
-        $(info  - Networking: ESP8266 WIFI) 
+else ifeq ($(NETWORK), WIFI)
+        $(info  - Networking: ESP WIFI) 
         FLAGS += -DESP8266WIFI
 else ifeq ($(NETWORK), SBC)
         $(info  - SBC Interface Enabled)
@@ -140,7 +141,7 @@ $(BUILD_DIR)/libRRFLibraries.a: $(RRFLIBRARIES_OBJS)
 $(BUILD_DIR)/$(OUTPUT_NAME).elf: $(BUILD_DIR)/libSTMCore.a $(BUILD_DIR)/libRRFLibraries.a $(RRFLIBC_OBJS) $(RRF_OBJS)
 	@echo "\nCreating $(OUTPUT_NAME).bin"
 	$(V)$(MKDIR) $(dir $@)
-	$(V)$(LD) -L$(BUILD_DIR)/ -L$(CORE_DIR)/src/STM32F4/variants/STM32F446/ -L$(CORE_DIR)/src/STM32F4/system/CMSIS/CMSIS/DSP/Lib/GCC --specs=nosys.specs -Xlinker -z -Xlinker muldefs -Os -Wl,--fatal-warnings -fmerge-all-constants -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mcpu=cortex-m4 -mthumb -T$(LINKER_SCRIPT) -Wl,-Map,$(BUILD_DIR)/$(OUTPUT_NAME).map -o $(BUILD_DIR)/$(OUTPUT_NAME).elf -Wl,--cref -Wl,--check-sections -Wl,--gc-sections,--relax -Wl,--entry=Reset_Handler -Wl,--unresolved-symbols=report-all -Wl,--warn-common -Wl,--warn-unresolved-symbols -Wl,--defsym=LD_MAX_SIZE=1048576 -Wl,--defsym=LD_MAX_DATA_SIZE=196608 -Wl,--defsym=LD_FLASH_OFFSET=0x0 -Wl,--start-group $(RRFLIBC_OBJS) -lSTMCore $(RRF_OBJS) -lRRFLibraries -larm_cortexM4l_math -lc -lm -lgcc -lstdc++ -Wl,--end-group
+	$(V)$(LD) -L$(BUILD_DIR)/ -L$(CORE_DIR)/src/STM32F4/variants/STM32F407/ -L$(CORE_DIR)/src/STM32F4/system/CMSIS/CMSIS/DSP/Lib/GCC --specs=nosys.specs -Xlinker -z -Xlinker muldefs -Os -Wl,--fatal-warnings -fmerge-all-constants -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mcpu=cortex-m4 -mthumb -T$(LINKER_SCRIPT) -Wl,-Map,$(BUILD_DIR)/$(OUTPUT_NAME).map -o $(BUILD_DIR)/$(OUTPUT_NAME).elf -Wl,--cref -Wl,--check-sections -Wl,--gc-sections,--relax -Wl,--entry=Reset_Handler -Wl,--unresolved-symbols=report-all -Wl,--warn-common -Wl,--warn-unresolved-symbols -Wl,--defsym=LD_MAX_SIZE=1048576 -Wl,--defsym=LD_MAX_DATA_SIZE=196608 -Wl,--defsym=LD_FLASH_OFFSET=0x0 -Wl,--start-group $(RRFLIBC_OBJS) -lSTMCore $(RRF_OBJS) -lRRFLibraries -larm_cortexM4l_math -lc -lm -lgcc -lstdc++ -Wl,--end-group
 	$(V)$(OBJCOPY) --strip-unneeded -O binary $(BUILD_DIR)/$(OUTPUT_NAME).elf $(BUILD_DIR)/$(OUTPUT_NAME).bin
 	$(V)$(SIZE) $(BUILD_DIR)/$(OUTPUT_NAME).elf
 	-@$(MAKE_DIR)/staticMemStats.sh $(BUILD_DIR)/$(OUTPUT_NAME)

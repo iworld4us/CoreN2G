@@ -7,7 +7,7 @@ CORE_SRC_DIRS += src/STM32F4/system src/STM32F4/system/STM32F4xx src/STM32F4/sys
 CORE_SRC_DIRS += src/STM32F4/system/Drivers/CMSIS/Device/ST/STM32F4xx/Include src/STM32F4/system/Drivers/CMSIS/Device/ST/STM32F4xx/Source
 CORE_SRC_DIRS += src/STM32F4/system/Drivers/STM32F4xx_HAL_Driver/Inc src/STM32F4/system/Drivers/STM32F4xx_HAL_Driver/Src
 CORE_SRC_DIRS += src/STM32F4/system/CMSIS/CMSIS/Core/Include src/STM32F4/system/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc
-CORE_SRC_DIRS += src/STM32F4/variants/STM32F446 src/STM32F4/ConfigurableUART src/STM32F4/SharedSPI src/STM32F4/PWM src/STM32F4/SDIO src/STM32F4/CRC32
+CORE_SRC_DIRS += src/STM32F4/variants/STM32F407 src/STM32F4/ConfigurableUART src/STM32F4/SharedSPI src/STM32F4/PWM src/STM32F4/SDIO src/STM32F4/CRC32
 
 CORE_SRC = $(CORE_DIR) $(addprefix $(CORE_DIR)/, $(CORE_SRC_DIRS))
 CORE_INCLUDES = $(addprefix -I, $(CORE_SRC))

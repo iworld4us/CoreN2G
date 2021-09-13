@@ -1,11 +1,6 @@
 PROCESSOR = LPC17xx
 
 
-#Enable when debugging on MBED to swap serial and USB 
-#and select direct ld script
-#MBED = true
-
-
 
 BUILD_DIR ?= ./build
 FREERTOS_DIR ?= ./FreeRTOS
@@ -15,7 +10,7 @@ CORELPC_DIR ?= ./CoreN2G
 
 BUILD ?= Debug
 
-NETWORK ?= ESP8266WIFI
+NETWORK ?= WIFI
 
 TMC22XX ?= true
 
@@ -59,14 +54,9 @@ else
 endif
 	
 
-#select correct linker script
-ifeq ($(MBED), true)
-	#No bootloader for MBED
-	LINKER_SCRIPT_BASE = $(CORE_DIR)/src/LPC/variants/LPC/linker_scripts/gcc/LPC17xx_direct
-else 
-	#Linker script to avoid Smoothieware Bootloader
- 	LINKER_SCRIPT_BASE = $(CORE_DIR)/src/LPC/variants/LPC/linker_scripts/gcc/LPC17xx_smoothie
-endif
+#Linker script to avoid Smoothieware Bootloader
+LINKER_SCRIPT_BASE = $(CORE_DIR)/src/LPC/variants/LPC/linker_scripts/gcc/LPC17xx_smoothie
+
 
 
 #Path to the linker Script
@@ -76,14 +66,6 @@ $(info  - Linker Script used: $(LINKER_SCRIPT))
 
 #Flags common for Core in c and c++
 FLAGS  = -D__$(PROCESSOR)__ -DLPC17xx -D_XOPEN_SOURCE -DENABLE_UART3
-
-ifeq ($(MBED), true)
-        $(info  - Building for MBED)
-	    FLAGS += -D__MBED__
-        ifeq ($(ESP8266WIFI), true)
-            FLAGS += -DENABLE_UART3 -DENABLE_UART2 -DENABLE_UART1
-        endif
-endif
 
 #lpcopen Defines
 FLAGS += -DCORE_M3
@@ -100,8 +82,8 @@ FLAGS += -MMD -MP
 ifeq ($(NETWORK), ETHERNET)
         $(info  - Networking: Ethernet)
         FLAGS += -DLPC_NETWORKING
-else ifeq ($(NETWORK), ESP8266WIFI)
-        $(info  - Networking: ESP8266 WIFI) 
+else ifeq ($(NETWORK), WIFI)
+        $(info  - Networking: ESP WIFI) 
         FLAGS += -DESP8266WIFI
 else ifeq ($(NETWORK), SBC)
         $(info  - SBC Interface Enabled)
